@@ -2,6 +2,11 @@
 //M408 fanPercent shows all fans not just adjustable.
 //M408 fanPercent shows 0.0 for thermostatic fans set to S0 but is clamped 0.5-1.0
 
+extern "C"
+{
+#include "json.h"
+}
+
 #include <U8g2lib.h>
 
 //#define ENABLE_DEBUG_PRINT
@@ -51,15 +56,14 @@ char* FractionPrinted = NULL;
 //static const char M408_S0[] PROGMEM = "{\"status\":\"I\",\"heaters\":[21.2,20.7],\"active\":[0.0,0.0],\"standby\":[0.0,0.0],\"hstat\":[0,0],\"pos\":[0.000,0.000,301.534],\"machine\":[0.000,0.000,302.384],\"sfactor\":100.0,\"efactor\":[100.0,100.0],\"babystep\":0.850,\"tool\":-1,\"probe\":\"1000\",\"fanPercent\":[0.0,0,100,0],\"fanRPM\":[-1,-1,-1],\"homed\":[0,0,0],\"msgBox.mode\":-1}";
 //static const char M408_S1[] PROGMEM = "{\"status\":\"I\",\"heaters\":[20.9,20.7],\"active\":[0.0,0.0],\"standby\":[0.0,0.0],\"hstat\":[0,0],\"pos\":[0.000,0.000,301.534],\"machine\":[0.000,0.000,302.384],\"sfactor\":100.0,\"efactor\":[100.0,100.0],\"babystep\":0.850,\"tool\":-1,\"probe\":\"1000\",\"fanPercent\":[0.0,0,100,0],\"fanRPM\":[-1,-1,-1],\"homed\":[0,0,0],\"msgBox.mode\":-1,\"geometry\":\"delta\",\"axes\":3,\"totalAxes\":3,\"axisNames\":\"XYZ\",\"volumes\":2,\"numTools\":2,\"myName\":\"Deltabot\",\"firmwareName\":\"RepRapFirmware for LPC176x based Boards\"}";
 
-void GetValStr(const char* Haystack, PGM_P Needle, char** Out, unsigned char* OutLen);
-void GetValArray(const char* Haystack, PGM_P Needle, char** Out, unsigned char* OutLen);
-void GetValNumber(const char* Haystack, PGM_P Needle, char** Out, unsigned char* OutLen);
 char* PrintFloat(char* Str, unsigned char precision);
 int ReadResponse();
 bool ParseM408S0(const char* Buffer, const int BytesRead);
 bool ParseM408S1(const char* Buffer, const int BytesRead);
 int MakeRequest(PGM_P Req, char* Resp, const int Len);
 PGM_P DecodeStatus(const char* Code);
+void ConnectingScreen();
+void MainScreen();
 
 void setup()
 {
@@ -112,7 +116,7 @@ void loop()
       
       if (BytesRead)
       {
-        if (ParseM408S0(SerialBuffer, BytesRead))
+        if (ParseM408S1(SerialBuffer, BytesRead))
         {
           Redraw = true;
         }
@@ -135,78 +139,7 @@ void loop()
     DrawConnecting();
     
 }
-/*
-void loop2(void)
-{
-  static int Timer;
-  static int State = STATE_SEND;
-  bool ParseResult = false;
-  const int Now = millis();
-  int BytesRead;
 
-  switch (State)
-  {
-    case STATE_SEND:
-      if (Connected)
-        Serial.println(F("M408 S0"));
-      else
-        Serial.println(F("M408 S1"));
-
-      Timer = Now;
-      State = STATE_RECV;
-      break;
-    case STATE_RECV:
-      BytesRead = ReadResponse();
-      
-      if (BytesRead)
-      {
-        DEBUG_PRINT_P("Got stuff");
-        
-        if (Connected)
-          ParseResult = ParseM408S0(SerialBuffer, BytesRead-1);
-        else
-          ParseResult = ParseM408S1(SerialBuffer, BytesRead-1);
-
-        if (ParseResult)
-        {
-          State = STATE_WAIT;
-          Timer = Now;
-          Connected = true;
-        }
-        else
-        {
-          DEBUG_PRINT_P("Bad parse");
-          Connected = false;
-          State = STATE_SEND;
-        }
-      }
-      else if (Timer - Now > 8000)
-      {
-        DEBUG_PRINT_P("Timeout");
-        Connected = false;
-        State = STATE_SEND;
-      }
-      break;
-    case STATE_WAIT:
-      if (Timer - Now > 1000)
-        State = STATE_SEND;
-      break;
-  }
-
-  if (ParseResult)
-  {
-    u8g2.firstPage();
-    do
-    {
-      if (Connected)
-        MainScreen();
-      else
-        ConnectingScreen();
-    }
-    while ( u8g2.nextPage() );
-  }
-}
-*/
 void DrawConnecting()
 {
   u8g2.firstPage();
@@ -255,163 +188,180 @@ int MakeRequest(PGM_P Req, char* Resp, const int Len)
   Resp[BytesRead+1] = 0;
   return BytesRead;
 }
-/*
-int ReadResponse()
+
+char strcmpJP(PGM_P str1, char* str2, const int str2len)
 {
-  int BytesRead = 0;
-  char Byte;
+  char val;
+  const char* str2end = str2 + str2len;
   
-  while (Serial.available())
+  while (true)
   {
-     Byte = Serial.read();
+    val = pgm_read_byte(str1);
 
-    SerialBuffer[SerialBufferLen] = Byte;
-    SerialBufferLen++;
-
-    if (SerialBuffer[SerialBufferLen-1] == '\n')
+    if (val == *str2)
     {
-      SerialBuffer[SerialBufferLen-1] = 0;
-      BytesRead = SerialBufferLen;
-      SerialBufferLen = 0;
-
-      DEBUG_PRINT(SerialBuffer);
-      break;
+      //if (val == NULL)
+        //return 0;
     }
-    else if (SerialBufferLen == sizeof(SerialBuffer))
+    else
     {
-      DEBUG_PRINT_P("Buffer overflow");
-      SerialBufferLen = 0;
+      if (val < *str2)
+        return -1;
+      else
+        return 1;
     }
+    
+    str1++;
+    str2++;
+
+    if (str2 == str2end)
+      return 0;
   }
-  
-  return BytesRead;
 }
-*/
-//"validate"
-bool IsValidJSON(const char* JSON, const int Len)
+
+void strcpyJ(char* dest, char* src, int srclen)
 {
-  if (JSON[0] == '{' && JSON[Len-1] == '}')
-    return true;
-  else
-    return false;
+  while (srclen > 0)
+  {
+    *dest = *src;
+
+    dest++;
+    src++;
+    srclen--;
+  }
+
+  *dest = NULL;
 }
 
 bool ParseM408S1(const char* Buffer, const int BytesRead)
 {
-  char* NameStr;
-  unsigned char NameStrLen;
-  char* NumToolsStr;
-  unsigned char NumToolsStrLen;
+  char* jstate;
+  unsigned char v1type;
+  char* v1begin;
+  int v1len;
+  unsigned char v2type;
+  char* v2begin;
+  int v2len;
+  char result = json_obj(&jstate, Buffer, &v1type, &v1begin, &v1len, &v2type, &v2begin, &v2len);
+  char* astate;
   
-  if (IsValidJSON(Buffer, BytesRead))
+  unsigned char Index;
+  char** PosIter;
+
+  while (result > 0)
   {
-    GetValStr(Buffer, PSTR("\"myName\""), &NameStr, &NameStrLen);
-    GetValNumber(Buffer, PSTR("\"numTools\""), &NumToolsStr, &NumToolsStrLen);
+    if (strcmpJP(PSTR("myName"), v1begin, v1len) == 0)
+    {
+      strcpyJ(PrinterName, v2begin, min(32,v2len));
+    }
+    else if (strcmpJP(PSTR("numTools"), v1begin, v1len) == 0)
+    {
+      NumTools = v2begin[0] - '0';
+    }
+    else if (strcmpJP(PSTR("status"), v1begin, v1len) == 0)
+    {
+      StatusStr = v2begin;
+    }
+    else if (strcmpJP(PSTR("pos"), v1begin, v1len) == 0)
+    {
+      PosIter = &Pos.X;
+      result = json_arr(&astate, v2begin, &v1type, &v1begin, &v1len);
+      
+      while (result > 0)
+      {
+        *PosIter = v1begin;
+        PosIter++;
 
-    if (NameStr == NULL || NumToolsStr == NULL)
-      return false;
-  
-    ParseM408S0(Buffer, BytesRead);
-    
-    *(NameStr + NameStrLen) = 0;
-    *(NumToolsStr + NumToolsStrLen) = 0;
-    
-    strncpy(PrinterName, NameStr, 32);
-    NumTools = NumToolsStr[0] - '0';
+        if (PosIter > &Pos.Z)
+          break;
+        
+        result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
+      }
+    }
+    else if (strcmpJP(PSTR("heaters"), v1begin, v1len) == 0)
+    {
+      HeaterCount = 0;
+      
+      result = json_arr(&astate, v2begin, &v1type, &v1begin, &v1len);
+      
+      while (result > 0)
+      {
+        Heaters[HeaterCount].Current = v1begin;
+        HeaterCount++;
 
-    return true;
+        if (HeaterCount == HEATERS_MAX)
+          break;
+        
+        result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
+      }
+    }
+    else if (strcmpJP(PSTR("active"), v1begin, v1len) == 0)
+    {
+      Index = 0;
+
+      result = json_arr(&astate, v2begin, &v1type, &v1begin, &v1len);
+      
+      while (result > 0)
+      {
+        Heaters[Index].Active = v1begin;
+        Index++;
+
+        if (Index == HEATERS_MAX)
+          break;
+        
+        result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
+      }
+    }
+    else if (strcmpJP(PSTR("standby"), v1begin, v1len) == 0)
+    {
+      Index = 0;
+
+      result = json_arr(&astate, v2begin, &v1type, &v1begin, &v1len);
+      
+      while (result > 0)
+      {
+        Heaters[Index].Standby = v1begin;
+        Index++;
+
+        if (Index == HEATERS_MAX)
+          break;
+        
+        result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
+      }
+    }
+    else if (strcmpJP(PSTR("hstat"), v1begin, v1len) == 0)
+    {
+      Index = 0;
+
+      result = json_arr(&astate, v2begin, &v1type, &v1begin, &v1len);
+      
+      while (result > 0)
+      {
+        Heaters[Index].Status = v1begin[0] - '0';
+        Index++;
+
+        if (Index == HEATERS_MAX)
+          break;
+        
+        result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
+      }
+    }
+    else if (strcmpJP(PSTR("tool"), v1begin, v1len) == 0)
+    {
+      if (isdigit(v1begin[0]))
+        Tool = v1begin[0] - '0';
+      else
+        Tool = -1;
+    }
+    else if (strcmpJP(PSTR("fraction_printed"), v1begin, v1len) == 0)
+    {
+      FractionPrinted = v2begin;
+    }
+    
+    result = json_obj(&jstate, NULL, &v1type, &v1begin, &v1len, &v2type, &v2begin, &v2len);
   }
 
-  return false;
-}
-
-bool ParseM408S0(const char* Buffer, const int BytesRead)
-{
-  unsigned char StatusStrLen;
-  unsigned char PosStrLen;
-  char* HeatersStr;
-  unsigned char HeatersStrLen;
-  char* ActiveStr;
-  unsigned char ActiveStrLen;
-  char* StandbyStr;
-  unsigned char StandbyStrLen;
-  char* HStatStr;
-  unsigned char HStatStrLen;
-  char* ToolStr;
-  unsigned char ToolStrLen;
-  unsigned char FractionPrintedLen;
-
-  if (IsValidJSON(Buffer, BytesRead))
-  {
-    GetValStr(Buffer, PSTR("\"status\""), &StatusStr, &StatusStrLen);
-    GetValArray(Buffer, PSTR("\"pos\""), &PosStr, &PosStrLen);
-    GetValArray(Buffer, PSTR("\"heaters\""), &HeatersStr, &HeatersStrLen);
-    GetValArray(Buffer, PSTR("\"active\""), &ActiveStr, &ActiveStrLen);
-    GetValArray(Buffer, PSTR("\"standby\""), &StandbyStr, &StandbyStrLen);
-    GetValArray(Buffer, PSTR("\"hstat\""), &HStatStr, &HStatStrLen);
-    GetValNumber(Buffer, PSTR("\"tool\""), &ToolStr, &ToolStrLen);
-    GetValNumber(Buffer, PSTR("\"fraction_printed\""), &FractionPrinted, &FractionPrintedLen);
-    
-
-    if (StatusStr == NULL || PosStr == NULL ||
-        HeatersStr == NULL || ActiveStr == NULL ||
-        StandbyStr == NULL || HStatStr == NULL ||
-        ToolStr == NULL)
-      return false;
-  
-    *(StatusStr + StatusStrLen) = 0;
-    *(PosStr + PosStrLen) = 0;
-    *(HeatersStr + HeatersStrLen) = 0;
-    *(ActiveStr + ActiveStrLen) = 0;
-    *(StandbyStr + StandbyStrLen) = 0;
-    *(HStatStr + HStatStrLen) = 0;
-    *(ToolStr + ToolStrLen) = 0;
-
-    if (FractionPrinted != NULL)
-      *(FractionPrinted + FractionPrintedLen) = 0;
-  
-    static bool First = true;
-    if (First)
-    {
-      First = false;
-      DEBUG_PRINT(StatusStr);
-      DEBUG_PRINT(PosStr);
-      DEBUG_PRINT(HeatersStr);
-      DEBUG_PRINT(ActiveStr);
-      DEBUG_PRINT(StandbyStr);
-      DEBUG_PRINT(HStatStr);
-      DEBUG_PRINT(ToolStr);
-    }
-  
-    Pos.X = strtok(PosStr, ",");
-    Pos.Y = strtok(NULL, ",");
-    Pos.Z = strtok(NULL, ",");
-  
-    for (HeaterCount = 0; HeaterCount < HEATERS_MAX; HeaterCount++)
-    {
-      Heaters[HeaterCount].Current = strtok(HeaterCount == 0 ? HeatersStr : NULL, ",");
-  
-      if (Heaters[HeaterCount].Current == NULL)
-        break;
-    }
-  
-    for (char i = 0; i < HeaterCount; i++)
-      Heaters[i].Active = strtok(i == 0 ? ActiveStr : NULL, ",");
-  
-    for (char i = 0; i < HeaterCount; i++)
-      Heaters[i].Standby = strtok(i == 0 ? StandbyStr : NULL, ",");
-  
-    for (char i = 0; i < HeaterCount; i++)
-    {
-      char* Temp = strtok(i == 0 ? HStatStr : NULL, ",");
-      Heaters[i].Status = Temp[0] - '0';
-    }
-  
-    if (isdigit(ToolStr[0]))
-      Tool = ToolStr[0] - '0';
-    else
-      Tool = -1;
-  }
+  return true;
 }
 
 void ConnectingScreen()
@@ -482,13 +432,12 @@ void MainScreen()
     if (FractionPrinted[2] != '0')
       u8g2.print(FractionPrinted[2]);
 
-    if (FractionPrinted[3] == 0)
-      u8g2.print('0');
-    else
+    if (isdigit(FractionPrinted[3]))
       u8g2.print(FractionPrinted[3]);
+    else
+      u8g2.print('0');
       
     u8g2.print('%');
-    //u8g2.drawStr(0, 51, FractionPrinted);
   }
 
   u8g2.drawLine(0, 56, 128, 56);
@@ -545,12 +494,6 @@ void BedHeater(const int16_t x, const int16_t y, const bool On)
 {
   if (On)
   {
-    //u8g2.drawLine(7+x,y, 7+x,5+y);
-    //u8g2.drawPixel(7+x,8+y);
-    //u8g2.drawStr(7+x,8+y, "HOT");
-
-    //u8g2.setFont(u8g2_font_unifont_t_77);
-    //u8g2.drawGlyph(7+x,8+y, 9888);
     u8g2.setFont(u8g2_font_unifont_t_76);
     u8g2.drawGlyph(2 + x, 11 + y, 9832);
 
@@ -594,20 +537,13 @@ void HotendHeater(const int16_t x, const int16_t y, const char Num, const bool O
 void Heater(const int16_t x, const int16_t y, const char* current, const char* active, const char* standby)
 {
   u8g2.setFont(u8g2_font_5x7_tr);
-  //u8g2.setCursor(x, y);
-  //u8g2.print(current,1);
-  u8g2.drawStr(x, y, current);
 
-  //u8g2.setCursor(x, y + 7);
-  //dtostrf(active, 5, 1, active);
-  //u8g2.print(active);
-  u8g2.drawStr(x, y + 7, active);
-
-  //u8g2.setCursor(x, y + 14);
-  //u8g2.print(standby,1);
-  //dtostrf(standby, 5, 1, standby);
-  //u8g2.print(standby);
-  u8g2.drawStr(x, y + 14, standby);
+  u8g2.setCursor(x, y);
+  PrintFloat(current, 1);
+  u8g2.setCursor(x, y + 7);
+  PrintFloat(active, 1);
+  u8g2.setCursor(x, y + 14);
+  PrintFloat(standby, 1);
 }
 
 void Triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2)
@@ -617,90 +553,9 @@ void Triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_
   u8g2.drawLine(x2, y2, x0, y0);
 }
 
-void GetValStr(const char* Haystack, PGM_P Needle, char** Out, unsigned char* OutLen)
-{
-  char* Occurance = strstr_P(Haystack, Needle);
-
-  if (Occurance != NULL)
-  {
-    Occurance += strlen_P(Needle);
-
-    while (*Occurance != '\"')
-      Occurance++;
-
-    Occurance++;
-
-    *Out = Occurance;
-
-    while (*Occurance != '\"')
-      Occurance++;
-
-    *OutLen = Occurance - *Out;
-  }
-  else
-  {
-    *Out = NULL;
-    *OutLen = 0;
-  }
-}
-
-void GetValArray(const char* Haystack, PGM_P Needle, char** Out, unsigned char* OutLen)
-{
-  static const char Failure[] = "?";
-
-  char* Occurance = strstr_P(Haystack, Needle);
-
-  if (Occurance != NULL)
-  {
-    Occurance += strlen_P(Needle);
-
-    while (*Occurance != '[')
-      Occurance++;
-
-    Occurance++;
-
-    *Out = Occurance;
-
-    while (*Occurance != ']')
-      Occurance++;
-
-    *OutLen = Occurance - *Out;
-  }
-  else
-  {
-    *Out = Failure;
-    *OutLen = 1;
-  }
-}
-
-void GetValNumber(const char* Haystack, PGM_P Needle, char** Out, unsigned char* OutLen)
-{
-  char* Occurance = strstr_P(Haystack, Needle);
-
-  if (Occurance != NULL)
-  {
-    Occurance += strlen_P(Needle);
-
-    while (!isdigit(*Occurance) && *Occurance != '.' && *Occurance != '-')
-      Occurance++;
-
-    *Out = Occurance;
-
-    while (isdigit(*Occurance) || *Occurance == '.' || *Occurance == '-')
-      Occurance++;
-
-    *OutLen = Occurance - *Out;
-  }
-  else
-  {
-    *Out = NULL;
-    *OutLen = 0;
-  }
-}
-
 char* PrintFloat(char* Str, unsigned char precision)
 {
-  while (*Str >= '0' && *Str <= '9')
+  while ((*Str >= '0' && *Str <= '9') || *Str == '-')
   {
     u8g2.print(*Str);
     Str++;
