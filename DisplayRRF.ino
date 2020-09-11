@@ -30,7 +30,14 @@ Encoder Enc(2, 3);
 
 char SerialBuffer[640];
 
-bool Connected = false;
+enum
+{
+  PG_CONNECTING,
+  PG_MAIN,
+  PG_MENU1
+};
+
+unsigned char CurrentPage = PG_CONNECTING;
 
 #define FLAGS_ENC_SW 0x1
 #define FLAGS_RST_SW 0x2
@@ -79,6 +86,9 @@ void MainScreen();
 void DrawStrP(PGM_P Str);
 void DrawStrP(const int x, const int y, PGM_P Str);
 unsigned int StrWidthP(PGM_P Str);
+void DrawConnecting();
+void DrawMain();
+void DrawMenu();
 
 void setup()
 {
@@ -99,7 +109,7 @@ void setup()
 
 void EncSwInt()
 {
-  if (digitalRead(ENC_SW_PIN))
+  if (!(gFlags & ENC_SW_PIN) && digitalRead(ENC_SW_PIN))
     gFlags |= ENC_SW_PIN;
 }
 
@@ -119,7 +129,7 @@ void loop()
   {
     Timer = Now;
 
-    if (!Connected)
+    if (CurrentPage == PG_CONNECTING)
     {
       const int BytesRead = MakeRequest(PSTR("M408 S1"), SerialBuffer, sizeof(SerialBuffer));
       
@@ -127,7 +137,7 @@ void loop()
       {
         if (ParseM408S1(SerialBuffer, BytesRead))
         {
-          Connected = true;
+          CurrentPage = PG_MAIN;
           Redraw = true;
         }
         else
@@ -153,17 +163,24 @@ void loop()
       }
       else
       {
-        Connected = false;
+        CurrentPage = PG_CONNECTING;
         Redraw = true;
       }
     }
   }
-  
-  if (Connected)
+
+  switch (CurrentPage)
+  {
+  case PG_MAIN:
     DrawMain();
-  else
+    break;
+  case PG_CONNECTING:
     DrawConnecting();
-    
+    break;
+  case PG_MENU1:
+    DrawMenu();
+    break;
+  }
 }
 
 void DrawConnecting()
@@ -183,10 +200,35 @@ void DrawConnecting()
 
 void DrawMain()
 {
+  if (gFlags & ENC_SW_PIN)
+  {
+    gFlags &= ~ENC_SW_PIN;
+    CurrentPage = PG_MENU1;
+  }
+  
   u8g2.firstPage();
   do
   {
     MainScreen();
+  }
+  while (u8g2.nextPage());
+}
+
+void DrawMenu()
+{
+  if (gFlags & ENC_SW_PIN)
+  {
+    gFlags &= ~ENC_SW_PIN;
+    CurrentPage = PG_MAIN;
+  }
+  
+  u8g2.firstPage();
+  do
+  {
+    DrawStrP(0,7,PSTR("Back\n"));
+    DrawStrP(0,14,PSTR("Control\n"));
+    DrawStrP(0,21,PSTR("Run Macro\n"));
+    DrawStrP(0,28,PSTR("Preheat\n"));
   }
   while (u8g2.nextPage());
 }
