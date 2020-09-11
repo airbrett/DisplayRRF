@@ -8,6 +8,8 @@ extern "C"
 }
 
 #include <U8g2lib.h>
+#include <Encoder.h>
+#include <PinChangeInterrupt.h>
 
 //#define ENABLE_DEBUG_PRINT
 
@@ -19,17 +21,24 @@ extern "C"
 #define DEBUG_PRINT_P(str) ((void)0)
 #endif
 
+#define ENC_SW_PIN 8
+#define RST_SW_PIN A0
+
 //U8G2_ST7920_128X64_1_SW_SPI u8g2(U8G2_R0, 23, 17, 16, /* reset=*/ U8X8_PIN_NONE);//RAMPS
 U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);//Mini
-
+Encoder Enc(2, 3);
 
 char SerialBuffer[640];
-//int SerialBufferLen = 0;
+
 bool Connected = false;
+
+#define FLAGS_ENC_SW 0x1
+#define FLAGS_RST_SW 0x2
+unsigned char gFlags = 0;
 
 //Printer info
 char PrinterName[32];
-char* StatusStr;
+char StatusStr;
 char* PosStr;
 
 struct
@@ -53,6 +62,9 @@ unsigned char NumTools;
 unsigned char Tool;
 char* FractionPrinted = NULL;
 
+const unsigned char ConnectSequence[] = {80, 83, 81, 82, 0};
+unsigned char ConnectIndex = 0;
+
 //static const char M408_S0[] PROGMEM = "{\"status\":\"I\",\"heaters\":[21.2,20.7],\"active\":[0.0,0.0],\"standby\":[0.0,0.0],\"hstat\":[0,0],\"pos\":[0.000,0.000,301.534],\"machine\":[0.000,0.000,302.384],\"sfactor\":100.0,\"efactor\":[100.0,100.0],\"babystep\":0.850,\"tool\":-1,\"probe\":\"1000\",\"fanPercent\":[0.0,0,100,0],\"fanRPM\":[-1,-1,-1],\"homed\":[0,0,0],\"msgBox.mode\":-1}";
 //static const char M408_S1[] PROGMEM = "{\"status\":\"I\",\"heaters\":[20.9,20.7],\"active\":[0.0,0.0],\"standby\":[0.0,0.0],\"hstat\":[0,0],\"pos\":[0.000,0.000,301.534],\"machine\":[0.000,0.000,302.384],\"sfactor\":100.0,\"efactor\":[100.0,100.0],\"babystep\":0.850,\"tool\":-1,\"probe\":\"1000\",\"fanPercent\":[0.0,0,100,0],\"fanRPM\":[-1,-1,-1],\"homed\":[0,0,0],\"msgBox.mode\":-1,\"geometry\":\"delta\",\"axes\":3,\"totalAxes\":3,\"axisNames\":\"XYZ\",\"volumes\":2,\"numTools\":2,\"myName\":\"Deltabot\",\"firmwareName\":\"RepRapFirmware for LPC176x based Boards\"}";
 
@@ -61,12 +73,21 @@ int ReadResponse();
 bool ParseM408S0(const char* Buffer, const int BytesRead);
 bool ParseM408S1(const char* Buffer, const int BytesRead);
 int MakeRequest(PGM_P Req, char* Resp, const int Len);
-PGM_P DecodeStatus(const char* Code);
+PGM_P DecodeStatus(const char Code);
 void ConnectingScreen();
 void MainScreen();
+void DrawStrP(PGM_P Str);
+void DrawStrP(const int x, const int y, PGM_P Str);
+unsigned int StrWidthP(PGM_P Str);
 
 void setup()
 {
+  pinMode(ENC_SW_PIN, INPUT_PULLUP);
+  attachPCINT(digitalPinToPCINT(ENC_SW_PIN), EncSwInt, CHANGE);
+
+  pinMode(RST_SW_PIN, INPUT_PULLUP);
+  attachPCINT(digitalPinToPCINT(RST_SW_PIN), ResetSwInt, CHANGE);
+  
   Serial.begin(57600);
   Serial.setTimeout(8000);
   DEBUG_PRINT_P("hello world");
@@ -76,12 +97,17 @@ void setup()
   DrawConnecting();
 }
 
-enum
+void EncSwInt()
 {
-  STATE_SEND,
-  STATE_RECV,
-  STATE_WAIT
-};
+  if (digitalRead(ENC_SW_PIN))
+    gFlags |= ENC_SW_PIN;
+}
+
+void ResetSwInt()
+{
+  if (digitalRead(RST_SW_PIN))
+    gFlags |= RST_SW_PIN;
+}
 
 void loop()
 {
@@ -132,7 +158,7 @@ void loop()
       }
     }
   }
-
+  
   if (Connected)
     DrawMain();
   else
@@ -142,6 +168,11 @@ void loop()
 
 void DrawConnecting()
 {
+  ConnectIndex++;
+
+  if (ConnectSequence[ConnectIndex] == 0)
+    ConnectIndex = 0;
+    
   u8g2.firstPage();
   do
   {
@@ -260,7 +291,7 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
     }
     else if (strcmpJP(PSTR("status"), v1begin, v1len) == 0)
     {
-      StatusStr = v2begin;
+      StatusStr = v2begin[0];
     }
     else if (strcmpJP(PSTR("pos"), v1begin, v1len) == 0)
     {
@@ -366,28 +397,10 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
 
 void ConnectingScreen()
 {
-  static const int Sequence[] = {9680, 9683, 9681, 9682, 0};
-  static unsigned char Index = 0;
-  static unsigned long Timer = 0;
-
-  {
-    const unsigned long Now = millis();
-
-    if (Now - Timer > 1000)
-    {
-      Timer = Now;
-      Index++;
-
-      if (Sequence[Index] == 0)
-        Index = 0;
-    }
-
-    u8g2.setFont(u8g2_font_unifont_t_75);
-    u8g2.drawGlyph(60, 45, Sequence[Index]);
-    u8g2.setFont(u8g2_font_5x7_tr);
-    u8g2.setCursor(40, 30);
-    u8g2.print("Connecting");
-  }
+  u8g2.setFont(u8g2_font_unifont_t_75);
+  u8g2.drawGlyph(60, 45, 9600 + ConnectSequence[ConnectIndex]);
+  u8g2.setFont(u8g2_font_5x7_tr);
+  DrawStrP(40,30,PSTR("Connecting"));
 }
 
 void MainScreen()
@@ -396,28 +409,18 @@ void MainScreen()
   u8g2.drawStr(0, 7, PrinterName);
 
   PGM_P DecodedStatus = DecodeStatus(StatusStr);
-  const char Len = strlen_P(DecodedStatus);
-  char* StatusStr = malloc(Len+1);
-  strcpy_P(StatusStr, DecodedStatus);
-  u8g2_uint_t StatusStrWidth = u8g2.getStrWidth(StatusStr);
-  u8g2.drawStr(128 - StatusStrWidth, 7, StatusStr);
-  free(StatusStr);
+  DrawStrP(128 - StrWidthP(DecodedStatus), 7, DecodedStatus);
   
   u8g2.drawLine(0, 8, 128, 8);
 
-  //Serial.println(PosStr);
-  //
   BedHeater(12, 10, Heaters[0].Status == 2);// PanelDue only checks for 2
 
-  u8g2.drawStr(0, 30, "C");
-  u8g2.drawStr(0, 37, "A");
-  u8g2.drawStr(0, 44, "S");
+  DrawStrP(0, 30, PSTR("C"));
+  DrawStrP(0, 37, PSTR("A"));
+  DrawStrP(0, 44, PSTR("S"));
 
   for (unsigned char i = 0; i < HeaterCount; i++)
     Heater(7 + 30 * i, 30, Heaters[i].Current, Heaters[i].Active, Heaters[i].Standby);
-
-  //u8g2.setCursor(0,7);
-  //u8g2.print(count);
 
   for (int i = 0; i < NumTools; i++)
     HotendHeater(40 + i * 28, 10, '1' + i, Tool == i);
@@ -437,28 +440,26 @@ void MainScreen()
     else
       u8g2.print('0');
       
+      
     u8g2.print('%');
   }
 
   u8g2.drawLine(0, 56, 128, 56);
 
   //pos
-  u8g2.setCursor(0, 64);
-  u8g2.print("X ");
+  DrawStrP(0, 64, PSTR("X "));
   PrintFloat(Pos.X, 2);
 
-  u8g2.setCursor(45, 64);
-  u8g2.print("Y ");
+  DrawStrP(45, 64, PSTR("Y "));
   PrintFloat(Pos.Y, 2);
 
-  u8g2.setCursor(90, 64);
-  u8g2.print("Z ");
+  DrawStrP(90, 64, PSTR("Z "));
   PrintFloat(Pos.Z, 2);
 }
 
-PGM_P DecodeStatus(const char* Code)
+PGM_P DecodeStatus(const char Code)
 {
-  switch (Code[0])
+  switch (Code)
   {
     case 'I':
       return PSTR("Idle");
@@ -577,11 +578,10 @@ char* PrintFloat(char* Str, unsigned char precision)
   return Str;
 }
 
-void DrawStrP(const int x, const int y, PGM_P Str)
-{
-  u8g2.setCursor(x, y);
 
-  uint8_t val;
+void DrawStrP(PGM_P Str)
+{
+  char val;
   while (true)
   {
     val = pgm_read_byte(Str);
@@ -592,4 +592,34 @@ void DrawStrP(const int x, const int y, PGM_P Str)
     u8g2.print(val);
     Str++;
   }
+}
+
+void DrawStrP(const int x, const int y, PGM_P Str)
+{
+  u8g2.setCursor(x, y);
+  DrawStrP(Str);
+}
+
+unsigned int StrWidthP(PGM_P Str)
+{
+  char Buf[2];
+  unsigned int Width = 0;
+
+  Buf[1] = 0;
+
+  while (true)
+  {
+    Buf[0] = pgm_read_byte(Str);
+    
+    if (!Buf[0])
+      break;
+
+    if (Width > 0)
+      Width += 1;
+      
+    Width += u8g2.getStrWidth(Buf);
+    Str++;
+  }
+
+  return Width;
 }
