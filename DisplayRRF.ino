@@ -169,17 +169,20 @@ void loop()
     }
   }
 
-  switch (CurrentPage)
+  if (Redraw)
   {
-  case PG_MAIN:
-    DrawMain();
-    break;
-  case PG_CONNECTING:
-    DrawConnecting();
-    break;
-  case PG_MENU1:
-    DrawMenu();
-    break;
+    switch (CurrentPage)
+    {
+    case PG_MAIN:
+      DrawMain();
+      break;
+    case PG_CONNECTING:
+      DrawConnecting();
+      break;
+    case PG_MENU1:
+      DrawMenu();
+      break;
+    }
   }
 }
 
@@ -320,6 +323,8 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
   
   unsigned char Index;
   char** PosIter;
+
+  FractionPrinted = NULL;
 
   while (result > 0)
   {
