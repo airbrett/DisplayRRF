@@ -21,6 +21,8 @@ extern "C"
 #define DEBUG_PRINT_P(str) ((void)0)
 #endif
 
+//#define DISABLE_TIMEOUT
+
 #define ENC_SW_PIN 8
 #define RST_SW_PIN A0
 
@@ -163,7 +165,9 @@ void loop()
       }
       else
       {
+#ifndef DISABLE_TIMEOUT
         CurrentPage = PG_CONNECTING;
+#endif
         Redraw = true;
       }
     }
@@ -426,8 +430,8 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
     }
     else if (strcmpJP(PSTR("tool"), v1begin, v1len) == 0)
     {
-      if (isdigit(v1begin[0]))
-        Tool = v1begin[0] - '0';
+      if (isdigit(v2begin[0]))
+        Tool = v2begin[0] - '0';
       else
         Tool = -1;
     }
