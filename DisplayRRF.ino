@@ -11,17 +11,16 @@ extern "C"
 #include <Encoder.h>
 #include <PinChangeInterrupt.h>
 
-//#define ENABLE_DEBUG_PRINT
+//#define DEBUG_PRINT_ENABLE
+//#define DEBUG_NO_DATA
 
-#ifdef ENABLE_DEBUG_PRINT
+#ifdef DEBUG_PRINT_ENABLE
 #define DEBUG_PRINT(str) Serial.println(str)
 #define DEBUG_PRINT_P(str) Serial.println(F(str))
 #else
 #define DEBUG_PRINT(str) ((void)0)
 #define DEBUG_PRINT_P(str) ((void)0)
 #endif
-
-//#define DISABLE_TIMEOUT
 
 #define ENC_SW_PIN 8
 #define RST_SW_PIN A0
@@ -36,13 +35,20 @@ enum
 {
   PG_CONNECTING,
   PG_MAIN,
-  PG_MENU1
+  PG_MENU1,
+  PG_RUNMACRO
 };
 
+#ifdef DEBUG_NO_DATA
+unsigned char CurrentPage = PG_MAIN;
+#else
 unsigned char CurrentPage = PG_CONNECTING;
+#endif
 
 #define FLAGS_ENC_SW 0x1
-#define FLAGS_RST_SW 0x2
+#define FLAGS_ENC_SW_PREV 0x2
+#define FLAGS_RST_SW 0x4
+#define FLAGS_RST_SW_PREV 0x8
 unsigned char gFlags = 0;
 
 //Printer info
@@ -111,14 +117,28 @@ void setup()
 
 void EncSwInt()
 {
-  if (!(gFlags & ENC_SW_PIN) && digitalRead(ENC_SW_PIN))
-    gFlags |= ENC_SW_PIN;
+  if (digitalRead(ENC_SW_PIN))
+  {
+    if (!(gFlags & FLAGS_ENC_SW_PREV))
+      gFlags |= (FLAGS_ENC_SW_PREV | FLAGS_ENC_SW);
+  }
+  else
+  {
+    gFlags &= ~FLAGS_ENC_SW_PREV;
+  }
 }
 
 void ResetSwInt()
 {
   if (digitalRead(RST_SW_PIN))
-    gFlags |= RST_SW_PIN;
+  {
+    if (!(gFlags & FLAGS_RST_SW_PREV))
+      gFlags |= (FLAGS_RST_SW_PREV | FLAGS_RST_SW);
+  }
+  else
+  {
+    gFlags &= ~FLAGS_RST_SW_PREV;
+  }
 }
 
 void loop()
@@ -133,7 +153,11 @@ void loop()
 
     if (CurrentPage == PG_CONNECTING)
     {
+#ifdef DEBUG_NO_DATA
+      const int BytesRead = 0;
+#else
       const int BytesRead = MakeRequest(PSTR("M408 S1"), SerialBuffer, sizeof(SerialBuffer));
+#endif
       
       if (BytesRead)
       {
@@ -150,7 +174,11 @@ void loop()
     }
     else
     {
+#ifdef DEBUG_NO_DATA
+      const int BytesRead = 0;
+#else
       const int BytesRead = MakeRequest(PSTR("M408 S0"), SerialBuffer, sizeof(SerialBuffer));
+#endif
       
       if (BytesRead)
       {
@@ -165,13 +193,17 @@ void loop()
       }
       else
       {
-#ifndef DISABLE_TIMEOUT
+#ifndef DEBUG_NO_DATA
         CurrentPage = PG_CONNECTING;
 #endif
         Redraw = true;
       }
     }
   }
+
+#ifdef DEBUG_NO_DATA
+  Redraw = true;
+#endif
 
   if (Redraw)
   {
@@ -185,6 +217,9 @@ void loop()
       break;
     case PG_MENU1:
       DrawMenu();
+      break;
+    case PG_RUNMACRO:
+      DrawMacrosMenu();
       break;
     }
   }
@@ -207,10 +242,11 @@ void DrawConnecting()
 
 void DrawMain()
 {
-  if (gFlags & ENC_SW_PIN)
+  if (gFlags & FLAGS_ENC_SW)
   {
-    gFlags &= ~ENC_SW_PIN;
+    gFlags &= ~FLAGS_ENC_SW;
     CurrentPage = PG_MENU1;
+    Enc.write(0);
   }
   
   u8g2.firstPage();
@@ -223,19 +259,68 @@ void DrawMain()
 
 void DrawMenu()
 {
-  if (gFlags & ENC_SW_PIN)
+  char EncPos = Enc.read()/4;
+
+  if (EncPos < 0)
   {
-    gFlags &= ~ENC_SW_PIN;
-    CurrentPage = PG_MAIN;
+    EncPos = 0;
+    Enc.write(0);
+  }
+  
+  if (gFlags & FLAGS_ENC_SW)
+  {
+    gFlags &= ~FLAGS_ENC_SW;
+
+    switch (EncPos)
+    {
+      case 0:
+        CurrentPage = PG_MAIN;
+        break;
+      case 2:
+        CurrentPage = PG_RUNMACRO;
+        break;
+    }
   }
   
   u8g2.firstPage();
   do
   {
-    DrawStrP(0,7,PSTR("Back\n"));
-    DrawStrP(0,14,PSTR("Control\n"));
-    DrawStrP(0,21,PSTR("Run Macro\n"));
-    DrawStrP(0,28,PSTR("Preheat\n"));
+    DrawStrP(5,7,PSTR("Back"));
+    DrawStrP(5,14,PSTR("Control"));
+    DrawStrP(5,21,PSTR("Run Macro"));
+    DrawStrP(5,28,PSTR("Preheat"));
+
+    DrawStrP(0,7*EncPos+7,PSTR(">"));
+  }
+  while (u8g2.nextPage());
+}
+
+void DrawMacrosMenu()
+{
+  char EncPos = Enc.read()/4;
+
+  if (EncPos < 0)
+  {
+    EncPos = 0;
+    Enc.write(0);
+  }
+  
+  if (gFlags & FLAGS_ENC_SW)
+  {
+    gFlags &= ~FLAGS_ENC_SW;
+    
+    if (EncPos == 0)
+      CurrentPage = PG_MENU1;
+  }
+
+  PGM_P Text = PSTR("Run Macro");
+  u8g2.firstPage();
+  do
+  {
+    DrawStrP(u8g2.getDisplayWidth()/2-StrWidthP(Text)/2, 7, Text);
+    DrawStrP(5,14,PSTR("Back"));
+
+    DrawStrP(0,7*EncPos+14,PSTR(">"));
   }
   while (u8g2.nextPage());
 }
@@ -596,13 +681,6 @@ void Heater(const int16_t x, const int16_t y, const char* current, const char* a
   PrintFloat(active, 1);
   u8g2.setCursor(x, y + 14);
   PrintFloat(standby, 1);
-}
-
-void Triangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2)
-{
-  u8g2.drawLine(x0, y0, x1, y1);
-  u8g2.drawLine(x1, y1, x2, y2);
-  u8g2.drawLine(x2, y2, x0, y0);
 }
 
 char* PrintFloat(char* Str, unsigned char precision)
