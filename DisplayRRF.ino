@@ -22,12 +22,18 @@ extern "C"
 #define DEBUG_PRINT_P(str) ((void)0)
 #endif
 
+//Arduino Mini Pro
 #define ENC_SW_PIN 8
 #define RST_SW_PIN A0
+#define ENC_A_PIN 2
+#define ENC_B_PIN 3
+
+#define POLL_RATE 1000 //ms
+#define CONN_TIMEOUT 8000
 
 //U8G2_ST7920_128X64_1_SW_SPI u8g2(U8G2_R0, 23, 17, 16, /* reset=*/ U8X8_PIN_NONE);//RAMPS
-U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);//Mini
-Encoder Enc(2, 3);
+U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, U8X8_PIN_NONE);//Mini
+Encoder Enc(ENC_A_PIN, ENC_B_PIN);
 
 char SerialBuffer[640];
 
@@ -107,7 +113,7 @@ void setup()
   attachPCINT(digitalPinToPCINT(RST_SW_PIN), ResetSwInt, CHANGE);
   
   Serial.begin(57600);
-  Serial.setTimeout(8000);
+  Serial.setTimeout(CONN_TIMEOUT);
   DEBUG_PRINT_P("hello world");
   
   u8g2.begin();
@@ -143,61 +149,54 @@ void ResetSwInt()
 
 void loop()
 {
-  static int Timer = -9999;
-  const int Now = millis();
   bool Redraw = false;
 
-  if (Now - Timer > 1000)
+  if (CurrentPage == PG_CONNECTING)
   {
-    Timer = Now;
-
-    if (CurrentPage == PG_CONNECTING)
-    {
 #ifdef DEBUG_NO_DATA
-      const int BytesRead = 0;
+    const int BytesRead = 0;
 #else
-      const int BytesRead = MakeRequest(PSTR("M408 S1"), SerialBuffer, sizeof(SerialBuffer));
+    const int BytesRead = MakeRequest(PSTR("M408 S1"), SerialBuffer, sizeof(SerialBuffer));
 #endif
-      
-      if (BytesRead)
+    
+    if (BytesRead)
+    {
+      if (ParseM408S1(SerialBuffer, BytesRead))
       {
-        if (ParseM408S1(SerialBuffer, BytesRead))
-        {
-          CurrentPage = PG_MAIN;
-          Redraw = true;
-        }
-        else
-        {
-          DEBUG_PRINT_P("Bad parse");
-        }
+        CurrentPage = PG_MAIN;
+        Redraw = true;
+      }
+      else
+      {
+        DEBUG_PRINT_P("Bad parse");
+      }
+    }
+  }
+  else
+  {
+#ifdef DEBUG_NO_DATA
+    const int BytesRead = 0;
+#else
+    const int BytesRead = MakeRequest(PSTR("M408 S0"), SerialBuffer, sizeof(SerialBuffer));
+#endif
+    
+    if (BytesRead)
+    {
+      if (ParseM408S1(SerialBuffer, BytesRead))
+      {
+        Redraw = true;
+      }
+      else
+      {
+        DEBUG_PRINT_P("Bad parse");
       }
     }
     else
     {
-#ifdef DEBUG_NO_DATA
-      const int BytesRead = 0;
-#else
-      const int BytesRead = MakeRequest(PSTR("M408 S0"), SerialBuffer, sizeof(SerialBuffer));
-#endif
-      
-      if (BytesRead)
-      {
-        if (ParseM408S1(SerialBuffer, BytesRead))
-        {
-          Redraw = true;
-        }
-        else
-        {
-          DEBUG_PRINT_P("Bad parse");
-        }
-      }
-      else
-      {
 #ifndef DEBUG_NO_DATA
-        CurrentPage = PG_CONNECTING;
+      CurrentPage = PG_CONNECTING;
 #endif
-        Redraw = true;
-      }
+      Redraw = true;
     }
   }
 
@@ -327,7 +326,15 @@ void DrawMacrosMenu()
 
 int MakeRequest(PGM_P Req, char* Resp, const int Len)
 {
+  static int Timer = 0;
+  const int Now = millis();
   uint8_t val;
+
+  //limit the rate which messages are sent
+  if (Now - Timer < POLL_RATE)
+    delay(POLL_RATE - Now - Timer);
+
+  Timer = millis();
 
   //Clear out anything that came in between requests. I don't know if this is necessary
   //while (Serial.available())
@@ -363,12 +370,7 @@ char strcmpJP(PGM_P str1, char* str2, const int str2len)
   {
     val = pgm_read_byte(str1);
 
-    if (val == *str2)
-    {
-      //if (val == NULL)
-        //return 0;
-    }
-    else
+    if (val != *str2)
     {
       if (val < *str2)
         return -1;
@@ -419,7 +421,7 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
   {
     if (strcmpJP(PSTR("myName"), v1begin, v1len) == 0)
     {
-      strcpyJ(PrinterName, v2begin, min(32,v2len));
+      strcpyJ(PrinterName, v2begin, min(31,v2len));
     }
     else if (strcmpJP(PSTR("numTools"), v1begin, v1len) == 0)
     {
@@ -642,9 +644,6 @@ void BedHeater(const int16_t x, const int16_t y, const bool On)
 
 void HotendHeater(const int16_t x, const int16_t y, const char Num, const bool On)
 {
-  //u8g2.drawBox(3+x,2+y,4,5);
-  //u8g2.drawTriangle(0+x,7+y, 5+x,13+y, 11+x,7+y);
-
   //9929
   if (On)
   {
