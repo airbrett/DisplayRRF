@@ -100,8 +100,8 @@ void MainScreen();
 void DrawStrP(PGM_P Str);
 void DrawStrP(const int x, const int y, PGM_P Str);
 unsigned int StrWidthP(PGM_P Str);
-void DrawConnecting();
-void DrawMain();
+void UpdateConnecting();
+void UpdateMain();
 void DrawMenu();
 
 void setup()
@@ -118,7 +118,7 @@ void setup()
   
   u8g2.begin();
   u8g2.setFont(u8g2_font_5x7_tr);
-  DrawConnecting();
+  UpdateConnecting();
 }
 
 void EncSwInt()
@@ -149,111 +149,92 @@ void ResetSwInt()
 
 void loop()
 {
-  bool Redraw = false;
-
-  if (CurrentPage == PG_CONNECTING)
+  switch (CurrentPage)
   {
-#ifdef DEBUG_NO_DATA
-    const int BytesRead = 0;
-#else
-    const int BytesRead = MakeRequest(PSTR("M408 S1"), SerialBuffer, sizeof(SerialBuffer));
-#endif
-    
-    if (BytesRead)
-    {
-      if (ParseM408S1(SerialBuffer, BytesRead))
-      {
-        CurrentPage = PG_MAIN;
-        Redraw = true;
-      }
-      else
-      {
-        DEBUG_PRINT_P("Bad parse");
-      }
-    }
-  }
-  else
-  {
-#ifdef DEBUG_NO_DATA
-    const int BytesRead = 0;
-#else
-    const int BytesRead = MakeRequest(PSTR("M408 S0"), SerialBuffer, sizeof(SerialBuffer));
-#endif
-    
-    if (BytesRead)
-    {
-      if (ParseM408S1(SerialBuffer, BytesRead))
-      {
-        Redraw = true;
-      }
-      else
-      {
-        DEBUG_PRINT_P("Bad parse");
-      }
-    }
-    else
-    {
-#ifndef DEBUG_NO_DATA
-      CurrentPage = PG_CONNECTING;
-#endif
-      Redraw = true;
-    }
-  }
-
-#ifdef DEBUG_NO_DATA
-  Redraw = true;
-#endif
-
-  if (Redraw)
-  {
-    switch (CurrentPage)
-    {
-    case PG_MAIN:
-      DrawMain();
-      break;
-    case PG_CONNECTING:
-      DrawConnecting();
-      break;
-    case PG_MENU1:
-      DrawMenu();
-      break;
-    case PG_RUNMACRO:
-      DrawMacrosMenu();
-      break;
-    }
+  case PG_MAIN:
+    UpdateMain();
+    break;
+  case PG_CONNECTING:
+    UpdateConnecting();
+    break;
+  case PG_MENU1:
+    DrawMenu();
+    break;
+  case PG_RUNMACRO:
+    DrawMacrosMenu();
+    break;
   }
 }
 
-void DrawConnecting()
+void UpdateConnecting()
 {
   ConnectIndex++;
 
   if (ConnectSequence[ConnectIndex] == 0)
     ConnectIndex = 0;
-    
+
   u8g2.firstPage();
   do
   {
     ConnectingScreen();
   }
   while (u8g2.nextPage());
+
+  const int BytesRead = MakeRequest(PSTR("M408 S1"), SerialBuffer, sizeof(SerialBuffer));
+  
+  if (BytesRead)
+  {
+    if (ParseM408S1(SerialBuffer, BytesRead))
+    {
+      CurrentPage = PG_MAIN;
+    }
+    else
+    {
+      DEBUG_PRINT_P("Bad parse");
+    }
+  }
 }
 
-void DrawMain()
+void UpdateMain()
 {
+  const int BytesRead = MakeRequest(PSTR("M408 S0"), SerialBuffer, sizeof(SerialBuffer));
+  bool Redraw = false;
+  
+  if (BytesRead)
+  {
+    if (ParseM408S1(SerialBuffer, BytesRead))
+    {
+      Redraw = true;
+    }
+    else
+    {
+      DEBUG_PRINT_P("Bad parse");
+    }
+  }
+  else
+  {
+#ifndef DEBUG_NO_DATA
+    CurrentPage = PG_CONNECTING;
+#endif
+    Redraw = true;
+  }
+  
   if (gFlags & FLAGS_ENC_SW)
   {
     gFlags &= ~FLAGS_ENC_SW;
     CurrentPage = PG_MENU1;
     Enc.write(0);
   }
-  
-  u8g2.firstPage();
-  do
+
+  if (Redraw)
   {
-    MainScreen();
+    u8g2.firstPage();
+    do
+    {
+      MainScreen();
+    }
+    while (u8g2.nextPage());
   }
-  while (u8g2.nextPage());
 }
 
 void DrawMenu()
@@ -336,6 +317,8 @@ int MakeRequest(PGM_P Req, char* Resp, const int Len)
 
   Timer = millis();
 
+
+#ifndef DEBUG_NO_DATA
   //Clear out anything that came in between requests. I don't know if this is necessary
   //while (Serial.available())
   //  Serial.read();
@@ -359,6 +342,9 @@ int MakeRequest(PGM_P Req, char* Resp, const int Len)
 
   Resp[BytesRead+1] = 0;
   return BytesRead;
+#else
+  return 0;
+#endif
 }
 
 char strcmpJP(PGM_P str1, char* str2, const int str2len)
