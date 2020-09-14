@@ -89,7 +89,7 @@ unsigned char ConnectIndex = 0;
 //static const char M408_S0[] PROGMEM = "{\"status\":\"I\",\"heaters\":[21.2,20.7],\"active\":[0.0,0.0],\"standby\":[0.0,0.0],\"hstat\":[0,0],\"pos\":[0.000,0.000,301.534],\"machine\":[0.000,0.000,302.384],\"sfactor\":100.0,\"efactor\":[100.0,100.0],\"babystep\":0.850,\"tool\":-1,\"probe\":\"1000\",\"fanPercent\":[0.0,0,100,0],\"fanRPM\":[-1,-1,-1],\"homed\":[0,0,0],\"msgBox.mode\":-1}";
 //static const char M408_S1[] PROGMEM = "{\"status\":\"I\",\"heaters\":[20.9,20.7],\"active\":[0.0,0.0],\"standby\":[0.0,0.0],\"hstat\":[0,0],\"pos\":[0.000,0.000,301.534],\"machine\":[0.000,0.000,302.384],\"sfactor\":100.0,\"efactor\":[100.0,100.0],\"babystep\":0.850,\"tool\":-1,\"probe\":\"1000\",\"fanPercent\":[0.0,0,100,0],\"fanRPM\":[-1,-1,-1],\"homed\":[0,0,0],\"msgBox.mode\":-1,\"geometry\":\"delta\",\"axes\":3,\"totalAxes\":3,\"axisNames\":\"XYZ\",\"volumes\":2,\"numTools\":2,\"myName\":\"Deltabot\",\"firmwareName\":\"RepRapFirmware for LPC176x based Boards\"}";
 
-char* PrintFloat(char* Str, unsigned char precision);
+char* PrintFloat(char* Str, unsigned char precision, bool padminus);
 int ReadResponse();
 bool ParseM408S0(const char* Buffer, const int BytesRead);
 bool ParseM408S1(const char* Buffer, const int BytesRead);
@@ -313,10 +313,9 @@ int MakeRequest(PGM_P Req, char* Resp, const int Len)
 
   //limit the rate which messages are sent
   if (Now - Timer < POLL_RATE)
-    delay(POLL_RATE - Now - Timer);
+    delay(POLL_RATE - (Now - Timer));
 
   Timer = millis();
-
 
 #ifndef DEBUG_NO_DATA
   //Clear out anything that came in between requests. I don't know if this is necessary
@@ -340,8 +339,8 @@ int MakeRequest(PGM_P Req, char* Resp, const int Len)
   if (BytesRead < 1)
     return 0;//Timeout or some other mess
 
-  Resp[BytesRead+1] = 0;
-  return BytesRead;
+  Resp[BytesRead] = 0;
+  return BytesRead+1;
 #else
   return 0;
 #endif
@@ -571,14 +570,14 @@ void MainScreen()
   u8g2.drawLine(0, 56, 128, 56);
 
   //pos
-  DrawStrP(0, 64, PSTR("X "));
-  PrintFloat(Pos.X, 2);
+  DrawStrP(0, 64, PSTR("X"));
+  PrintFloat(Pos.X, 2, true);
 
-  DrawStrP(45, 64, PSTR("Y "));
-  PrintFloat(Pos.Y, 2);
+  DrawStrP(45, 64, PSTR("Y"));
+  PrintFloat(Pos.Y, 2, true);
 
-  DrawStrP(90, 64, PSTR("Z "));
-  PrintFloat(Pos.Z, 2);
+  DrawStrP(90, 64, PSTR("Z"));
+  PrintFloat(Pos.Z, 2, true);
 }
 
 PGM_P DecodeStatus(const char Code)
@@ -661,16 +660,26 @@ void Heater(const int16_t x, const int16_t y, const char* current, const char* a
   u8g2.setFont(u8g2_font_5x7_tr);
 
   u8g2.setCursor(x, y);
-  PrintFloat(current, 1);
+  PrintFloat(current, 1, false);
   u8g2.setCursor(x, y + 7);
-  PrintFloat(active, 1);
+  PrintFloat(active, 1, false);
   u8g2.setCursor(x, y + 14);
-  PrintFloat(standby, 1);
+  PrintFloat(standby, 1, false);
 }
 
-char* PrintFloat(char* Str, unsigned char precision)
+char* PrintFloat(char* Str, unsigned char precision, bool padminus)
 {
-  while ((*Str >= '0' && *Str <= '9') || *Str == '-')
+  if (*Str == '-')
+  {
+    u8g2.print(*Str);
+    Str++;
+  }
+  else if (padminus)
+  {
+    u8g2.print(' ');
+  }
+  
+  while (isdigit(*Str))
   {
     u8g2.print(*Str);
     Str++;
@@ -681,7 +690,7 @@ char* PrintFloat(char* Str, unsigned char precision)
     u8g2.print(*Str);
     Str++;
 
-    while (*Str >= '0' && *Str <= '9' && precision > 0)
+    while (isdigit(*Str) && precision > 0)
     {
       u8g2.print(*Str);
       Str++;
