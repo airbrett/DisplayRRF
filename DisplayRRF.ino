@@ -8,21 +8,11 @@ extern "C"
 }
 
 #include "Data.h"
+#include "Connecting.h"
 
 #include <U8g2lib.h>
 #include <Encoder.h>
 #include <PinChangeInterrupt.h>
-
-//#define DEBUG_PRINT_ENABLE
-//#define DEBUG_NO_DATA
-
-#ifdef DEBUG_PRINT_ENABLE
-#define DEBUG_PRINT(str) Serial.println(str)
-#define DEBUG_PRINT_P(str) Serial.println(F(str))
-#else
-#define DEBUG_PRINT(str) ((void)0)
-#define DEBUG_PRINT_P(str) ((void)0)
-#endif
 
 //Arduino Mini Pro
 #define ENC_SW_PIN 8
@@ -37,12 +27,9 @@ U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, U8X8_PIN_NONE);//Mini
 Encoder Enc(ENC_A_PIN, ENC_B_PIN);
 char SerialBuffer[640];
 Data gData;
-const unsigned char ConnectSequence[] = {80, 83, 81, 82, 0};
-unsigned char ConnectIndex = 0;
 
 char* PrintFloat(char* Str, unsigned char precision, bool padminus);
 int ReadResponse();
-bool ParseM408S0(const char* Buffer, const int BytesRead);
 bool ParseM408S1(const char* Buffer, const int BytesRead);
 int MakeRequest(PGM_P Req, char* Resp, const int Len);
 PGM_P DecodeStatus(const char Code);
@@ -51,7 +38,6 @@ void MainScreen();
 void DrawStrP(PGM_P Str);
 void DrawStrP(const int x, const int y, PGM_P Str);
 unsigned int StrWidthP(PGM_P Str);
-void UpdateConnecting();
 void UpdateMain();
 void DrawMenu();
 
@@ -114,35 +100,6 @@ void loop()
   case PG_RUNMACRO:
     DrawMacrosMenu();
     break;
-  }
-}
-
-void UpdateConnecting()
-{
-  ConnectIndex++;
-
-  if (ConnectSequence[ConnectIndex] == 0)
-    ConnectIndex = 0;
-
-  u8g2.firstPage();
-  do
-  {
-    ConnectingScreen();
-  }
-  while (u8g2.nextPage());
-
-  const int BytesRead = MakeRequest(PSTR("M408 S1"), SerialBuffer, sizeof(SerialBuffer));
-  
-  if (BytesRead)
-  {
-    if (ParseM408S1(SerialBuffer, BytesRead))
-    {
-      gData.CurrentPage = PG_MAIN;
-    }
-    else
-    {
-      DEBUG_PRINT_P("Bad parse");
-    }
   }
 }
 
@@ -467,14 +424,6 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
   }
 
   return true;
-}
-
-void ConnectingScreen()
-{
-  u8g2.setFont(u8g2_font_unifont_t_75);
-  u8g2.drawGlyph(60, 45, 9600 + ConnectSequence[ConnectIndex]);
-  u8g2.setFont(u8g2_font_5x7_tr);
-  DrawStrP(40,30,PSTR("Connecting"));
 }
 
 void MainScreen()
