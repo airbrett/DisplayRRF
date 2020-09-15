@@ -1,5 +1,17 @@
 #pragma once
 
+//probably isn't the best place for this stuff..
+//#define DEBUG_PRINT_ENABLE
+//#define DEBUG_NO_DATA
+
+#ifdef DEBUG_PRINT_ENABLE
+#define DEBUG_PRINT(str) Serial.println(str)
+#define DEBUG_PRINT_P(str) Serial.println(F(str))
+#else
+#define DEBUG_PRINT(str) ((void)0)
+#define DEBUG_PRINT_P(str) ((void)0)
+#endif
+
 enum
 {
   PG_CONNECTING,
