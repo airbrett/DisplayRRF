@@ -1,14 +1,10 @@
 #include "Data.h"
+#include "Utility.h"
 
 #include <U8g2lib.h>
 
-extern Data gData;
-extern U8G2_ST7920_128X64_1_HW_SPI u8g2;
-extern char SerialBuffer[640];
 extern int MakeRequest(PGM_P Req, char* Resp, const int Len);
 extern bool ParseM408S1(const char* Buffer, const int BytesRead);
-extern void DrawStrP(PGM_P Str);
-extern void DrawStrP(const int x, const int y, PGM_P Str);
 
 static const unsigned char ConnectSequence[] = {80, 83, 81, 82, 0};
 static unsigned char ConnectIndex = 0;
