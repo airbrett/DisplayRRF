@@ -26,20 +26,14 @@ while (*(str) == ' ' || *(str) == '\t' || *(str) == '\r' || *(str) == '\n')\
 
 static char* scan_val(char* json)
 {
-	bool done = false;
-
-	while (!done)
+	while (true)
 	{
-		switch (*json)
-		{
-		case ',':
-		case '}':
-			done = true;
+		if (*json == ',' ||
+			*json == '}' ||
+			*json == ']')
 			break;
-		case '\\':
+		else if (*json == '\\')
 			json++;
-			break;
-		}
 
 		json++;
 	}
@@ -150,7 +144,6 @@ static char* parse_value(char* json, unsigned char* vtype, char** vbegin, int* v
 		*vbegin = json + 1;//clip "
 		json = scan_str(json);
 		*vlen = json - *vbegin - 1;//clip "
-		json++;
 	}
 	else if (*json == '{')
 	{
@@ -173,7 +166,7 @@ static char* parse_value(char* json, unsigned char* vtype, char** vbegin, int* v
 		*vtype = JSON_TYPE_STR;
 		*vbegin = json;
 		json = scan_val(json);
-		*vlen = json - *vbegin - 1;
+		*vlen = json - *vbegin;
 	}
 
 	return json;
