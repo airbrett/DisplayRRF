@@ -68,7 +68,7 @@ struct Data
 		
 		struct
 		{
-			char* File[20];
+			char* FileArray;
 		} RM;
 	} P;
 };

@@ -56,6 +56,23 @@ void DrawStrP(const int x, const int y, PGM_P Str)
   DrawStrP(Str);
 }
 
+void DrawStrJ(const char* Str, int Len)
+{
+  const char* End = Str + Len;
+  
+  while (Str != End)
+  {
+    u8g2.print(*Str);
+    Str++;
+  }
+}
+
+void DrawStrJ(const int x, const int y, const char* Str, int Len)
+{
+  u8g2.setCursor(x, y);
+  DrawStrJ(Str, Len);
+}
+
 unsigned int StrWidthP(PGM_P Str)
 {
   char Buf[2];
