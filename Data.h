@@ -1,4 +1,8 @@
 #pragma once
+#include <U8g2lib.h>
+#include <Encoder.h>
+
+#include "Pins.h"
 
 //probably isn't the best place for this stuff..
 //#define DEBUG_PRINT_ENABLE
@@ -68,3 +72,8 @@ struct Data
 		} RM;
 	} P;
 };
+
+extern Data gData;
+extern Encoder Enc;
+extern U8G2_ST7920_128X64_1_HW_SPI u8g2;
+extern char SerialBuffer[640];
