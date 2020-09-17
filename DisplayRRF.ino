@@ -27,7 +27,7 @@ Data gData;
 
 int ReadResponse();
 bool ParseM408S1(const char* Buffer, const int BytesRead);
-int MakeRequest(PGM_P Req, char* Resp, const int Len);
+int MakeRequestP(PGM_P Req, char* Resp, const int Len);
 PGM_P DecodeStatus(const char Code);
 void ConnectingScreen();
 void MainScreen();
@@ -95,17 +95,24 @@ void loop()
   }
 }
 
-int MakeRequest(PGM_P Req, char* Resp, const int Len)
+
+
+void RateLimit()
 {
   static int Timer = 0;
   const int Now = millis();
-  uint8_t val;
-
-  //limit the rate which messages are sent
+  
   if (Now - Timer < POLL_RATE)
     delay(POLL_RATE - (Now - Timer));
 
   Timer = millis();
+}
+
+int MakeRequestP(PGM_P Req, char* Resp, const int Len)
+{
+  uint8_t val;
+
+  RateLimit();
 
 #ifndef DEBUG_NO_DATA
   //Clear out anything that came in between requests. I don't know if this is necessary
@@ -134,6 +141,26 @@ int MakeRequest(PGM_P Req, char* Resp, const int Len)
 #else
   return 0;
 #endif
+}
+
+int MakeRequest(const char* Req, char* Resp, const int Len)
+{
+  RateLimit();
+
+  Serial.println(Req);
+
+  if (Resp)
+  {
+    const size_t BytesRead = Serial.readBytesUntil('\n', Resp, Len-1);
+  
+    if (BytesRead < 1)
+      return 0;//Timeout or some other mess
+  
+    Resp[BytesRead] = 0;
+    return BytesRead+1;
+  }
+
+  return 0;
 }
 
 bool ParseM408S1(const char* Buffer, const int BytesRead)
