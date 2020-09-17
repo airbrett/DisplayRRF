@@ -6,9 +6,12 @@ extern "C"
 #include "json.h"
 }
 
-extern int MakeRequest(PGM_P Req, char* Resp, const int Len);
+extern int MakeRequestP(PGM_P Req, char* Resp, const int Len);
+extern int MakeRequest(const char* Req, char* Resp, const int Len);
 
 static bool ParseM20(const char* JSON, const int BytesRead);
+static void RunMacro(int Index);
+static void SendM98(const char* Macro, int MacroLen);
 
 void DrawMenu()
 {
@@ -65,11 +68,13 @@ void DrawMacrosMenu()
     
     if (EncPos == 0)
       gData.CurrentPage = PG_MENU1;
+    else
+      RunMacro(EncPos - 1);
   }
 
   if (!gData.P.RM.FileArray)
   {
-    const int BytesRead = MakeRequest(PSTR("M20 S2 P\"0:/macros\""), SerialBuffer, sizeof(SerialBuffer));
+    const int BytesRead = MakeRequestP(PSTR("M20 S2 P\"0:/macros\""), SerialBuffer, sizeof(SerialBuffer));
     
     if (BytesRead)
     {
@@ -130,4 +135,57 @@ bool ParseM20(const char* JSON, const int BytesRead)
   }
 
   return true;
+}
+
+void RunMacro(int Index)
+{
+  char* astate;
+  unsigned char v1type;
+  char* v1begin;
+  int v1len;
+  char result = json_arr(&astate, gData.P.RM.FileArray, &v1type, &v1begin, &v1len);
+  
+  while (result > 0)
+  {
+    if (Index == 0)
+    {
+      SendM98(v1begin, v1len);
+      break;
+    }
+
+    Index--;
+    result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
+  }
+}
+
+void SendM98(const char* Macro, int MacroLen)
+{
+  char Cmd[64];
+  char* Iter = Cmd;
+  PGM_P M98 = PSTR("M98 P\"/macros/");
+
+  while (true)
+  {
+    *Iter = pgm_read_byte(M98);
+    
+    if (!*Iter)
+      break;
+      
+    M98++;
+    Iter++;
+  }
+
+  while(MacroLen > 0)
+  {
+    *Iter = *Macro;
+    Iter++;
+    Macro++;
+    MacroLen--;
+  }
+
+  *Iter = '\"';
+  Iter++;
+  *Iter = NULL;
+
+  MakeRequest(Cmd, NULL, 0);
 }

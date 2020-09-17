@@ -1,7 +1,7 @@
 #include "Data.h"
 #include "Utility.h"
 
-extern int MakeRequest(PGM_P Req, char* Resp, const int Len);
+extern int MakeRequestP(PGM_P Req, char* Resp, const int Len);
 extern bool ParseM408S1(const char* Buffer, const int BytesRead);
 
 
@@ -13,7 +13,7 @@ static void Heater(const int16_t x, const int16_t y, const char* current, const 
 
 void UpdateMain()
 {
-  const int BytesRead = MakeRequest(PSTR("M408 S0"), SerialBuffer, sizeof(SerialBuffer));
+  const int BytesRead = MakeRequestP(PSTR("M408 S0"), SerialBuffer, sizeof(SerialBuffer));
   bool Redraw = false;
   
   if (BytesRead)

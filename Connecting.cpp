@@ -3,7 +3,7 @@
 
 #include <U8g2lib.h>
 
-extern int MakeRequest(PGM_P Req, char* Resp, const int Len);
+extern int MakeRequestP(PGM_P Req, char* Resp, const int Len);
 extern bool ParseM408S1(const char* Buffer, const int BytesRead);
 
 static const unsigned char ConnectSequence[] = {80, 83, 81, 82, 0};
@@ -25,7 +25,7 @@ void UpdateConnecting()
   }
   while (u8g2.nextPage());
 
-  const int BytesRead = MakeRequest(PSTR("M408 S1"), SerialBuffer, sizeof(SerialBuffer));
+  const int BytesRead = MakeRequestP(PSTR("M408 S1"), SerialBuffer, sizeof(SerialBuffer));
   
   if (BytesRead)
   {
