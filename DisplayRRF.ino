@@ -92,6 +92,9 @@ void loop()
   case PG_RUNMACRO:
     DrawMacrosMenu();
     break;
+  case PG_PRINT:
+    DrawPrintMenu();
+    break;  
   }
 }
 

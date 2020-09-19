@@ -21,7 +21,8 @@ enum
   PG_CONNECTING,
   PG_MAIN,
   PG_MENU1,
-  PG_RUNMACRO
+  PG_RUNMACRO,
+  PG_PRINT
 };
 
 #define FLAGS_ENC_SW 0x1
