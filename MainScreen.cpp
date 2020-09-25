@@ -13,12 +13,12 @@ static void Heater(const int16_t x, const int16_t y, const char* current, const 
 
 void UpdateMain()
 {
-  const int BytesRead = MakeRequestP(PSTR("M408 S0"), SerialBuffer, sizeof(SerialBuffer));
+  const int BytesRead = MakeRequestP(PSTR("M408 S0"), gSerialBuffer, sizeof(gSerialBuffer));
   bool Redraw = false;
   
   if (BytesRead)
   {
-    if (ParseM408S1(SerialBuffer, BytesRead))
+    if (ParseM408S1(gSerialBuffer, BytesRead))
     {
       Redraw = true;
     }
@@ -30,81 +30,81 @@ void UpdateMain()
   else
   {
 #ifndef DEBUG_NO_DATA
-    gData.CurrentPage = PG_CONNECTING;
+    gCurrentPage = PG_CONNECTING;
 #endif
     Redraw = true;
   }
   
-  if (gData.Flags & FLAGS_ENC_SW)
+  if (gFlags & FLAGS_ENC_SW)
   {
-    gData.Flags &= ~FLAGS_ENC_SW;
-    gData.CurrentPage = PG_MENU1;
-    Enc.write(0);
+    gFlags &= ~FLAGS_ENC_SW;
+    gCurrentPage = PG_MENU1;
+    gEnc1.write(0);
   }
 
   if (Redraw)
   {
-    u8g2.firstPage();
+    gLCD.firstPage();
     do
     {
       MainScreen();
     }
-    while (u8g2.nextPage());
+    while (gLCD.nextPage());
   }
 }
 
 void MainScreen()
 {
-  u8g2.setFont(u8g2_font_5x7_tr);
-  u8g2.drawStr(0, 7, gData.PrinterName);
+  gLCD.setFont(u8g2_font_5x7_tr);
+  gLCD.drawStr(0, 7, gPrinterName);
 
-  PGM_P DecodedStatus = DecodeStatus(gData.P.MS.StatusStr);
+  PGM_P DecodedStatus = DecodeStatus(gData.MS.StatusStr);
   DrawStrP(128 - StrWidthP(DecodedStatus), 7, DecodedStatus);
   
-  u8g2.drawLine(0, 8, 128, 8);
+  gLCD.drawLine(0, 8, 128, 8);
 
-  BedHeater(12, 10, gData.P.MS.Heaters[0].Status == 2);// PanelDue only checks for 2
+  BedHeater(12, 10, gData.MS.Heaters[0].Status == 2);// PanelDue only checks for 2
 
   DrawStrP(0, 30, PSTR("C"));
   DrawStrP(0, 37, PSTR("A"));
   DrawStrP(0, 44, PSTR("S"));
 
-  for (unsigned char i = 0; i < gData.P.MS.HeaterCount; i++)
-    Heater(7 + 30 * i, 30, gData.P.MS.Heaters[i].Current, gData.P.MS.Heaters[i].Active, gData.P.MS.Heaters[i].Standby);
+  for (unsigned char i = 0; i < gData.MS.HeaterCount; i++)
+    Heater(7 + 30 * i, 30, gData.MS.Heaters[i].Current, gData.MS.Heaters[i].Active, gData.MS.Heaters[i].Standby);
 
-  for (int i = 0; i < gData.NumTools; i++)
-    HotendHeater(40 + i * 28, 10, '1' + i, gData.P.MS.Tool == i);
+  for (int i = 0; i < gNumTools; i++)
+    HotendHeater(40 + i * 28, 10, '1' + i, gData.MS.Tool == i);
 
-  if (gData.P.MS.FractionPrinted != NULL)
+  if (gData.MS.FractionPrinted != NULL)
   {
-    u8g2.setCursor(0,51);
+    gLCD.setCursor(0,51);
     
-    if (gData.P.MS.FractionPrinted[0] != '0')
-      u8g2.print(gData.P.MS.FractionPrinted[0]);
+    if (gData.MS.FractionPrinted[0] != '0')
+      gLCD.print(gData.MS.FractionPrinted[0]);
 
-    if (gData.P.MS.FractionPrinted[2] != '0')
-      u8g2.print(gData.P.MS.FractionPrinted[2]);
+    if (gData.MS.FractionPrinted[2] != '0')
+      gLCD.print(gData.MS.FractionPrinted[2]);
 
-    if (isdigit(gData.P.MS.FractionPrinted[3]))
-      u8g2.print(gData.P.MS.FractionPrinted[3]);
+    if (isdigit(gData.MS.FractionPrinted[3]))
+      gLCD.print(gData.MS.FractionPrinted[3]);
     else
-      u8g2.print('0');
+      gLCD.print('0');
       
       
-    u8g2.print('%');
+    gLCD.print('%');
   }
 
-  u8g2.drawLine(0, 56, 128, 56);
+  gLCD.drawLine(0, 56, 128, 56);
 
   //pos
   DrawStrP(0, 64, PSTR("X"));
-  PrintFloat(gData.P.MS.Pos.X, 2, true);
+  PrintFloat(gData.MS.Pos.X, 2, true);
 
   DrawStrP(45, 64, PSTR("Y"));
-  PrintFloat(gData.P.MS.Pos.Y, 2, true);
+  PrintFloat(gData.MS.Pos.Y, 2, true);
 
   DrawStrP(90, 64, PSTR("Z"));
-  PrintFloat(gData.P.MS.Pos.Z, 2, true);
+  PrintFloat(gData.MS.Pos.Z, 2, true);
 }
 
 PGM_P DecodeStatus(const char Code)
@@ -145,13 +145,13 @@ void BedHeater(const int16_t x, const int16_t y, const bool On)
 {
   if (On)
   {
-    u8g2.setFont(u8g2_font_unifont_t_76);
-    u8g2.drawGlyph(2 + x, 11 + y, 9832);
+    gLCD.setFont(u8g2_font_unifont_t_76);
+    gLCD.drawGlyph(2 + x, 11 + y, 9832);
 
-    u8g2.setFont(u8g2_font_5x7_tr);
+    gLCD.setFont(u8g2_font_5x7_tr);
   }
 
-  u8g2.drawBox(0 + x, 11 + y, 12, 2);
+  gLCD.drawBox(0 + x, 11 + y, 12, 2);
 }
 
 void HotendHeater(const int16_t x, const int16_t y, const char Num, const bool On)
@@ -159,37 +159,37 @@ void HotendHeater(const int16_t x, const int16_t y, const char Num, const bool O
   //9929
   if (On)
   {
-    u8g2.setFont(u8g2_font_unifont_t_77);
-    u8g2.drawGlyph(0 + x, 13 + y, 9930);
+    gLCD.setFont(u8g2_font_unifont_t_77);
+    gLCD.drawGlyph(0 + x, 13 + y, 9930);
 
-    u8g2.setFont(u8g2_font_5x7_tr);
-    u8g2.setDrawColor(0);
-    u8g2.setCursor(5 + x, 8 + y);
-    u8g2.print(Num);
-    //u8g2.drawStr(5 + x, 8 + y, Num);
+    gLCD.setFont(u8g2_font_5x7_tr);
+    gLCD.setDrawColor(0);
+    gLCD.setCursor(5 + x, 8 + y);
+    gLCD.print(Num);
+    //gLCD.drawStr(5 + x, 8 + y, Num);
 
-    u8g2.setDrawColor(1);
+    gLCD.setDrawColor(1);
   }
   else
   {
-    u8g2.setFont(u8g2_font_unifont_t_77);
-    u8g2.drawGlyph(0 + x, 13 + y, 9929);
+    gLCD.setFont(u8g2_font_unifont_t_77);
+    gLCD.drawGlyph(0 + x, 13 + y, 9929);
 
-    u8g2.setFont(u8g2_font_5x7_tr);
-    //u8g2.drawStr(5 + x, 8 + y, Num);
-    u8g2.setCursor(5 + x, 8 + y);
-    u8g2.print(Num);
+    gLCD.setFont(u8g2_font_5x7_tr);
+    //gLCD.drawStr(5 + x, 8 + y, Num);
+    gLCD.setCursor(5 + x, 8 + y);
+    gLCD.print(Num);
   }
 }
 
 void Heater(const int16_t x, const int16_t y, const char* current, const char* active, const char* standby)
 {
-  u8g2.setFont(u8g2_font_5x7_tr);
+  gLCD.setFont(u8g2_font_5x7_tr);
 
-  u8g2.setCursor(x, y);
+  gLCD.setCursor(x, y);
   PrintFloat(current, 1, false);
-  u8g2.setCursor(x, y + 7);
+  gLCD.setCursor(x, y + 7);
   PrintFloat(active, 1, false);
-  u8g2.setCursor(x, y + 14);
+  gLCD.setCursor(x, y + 14);
   PrintFloat(standby, 1, false);
 }

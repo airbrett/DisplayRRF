@@ -20,9 +20,13 @@ extern "C"
 #define POLL_RATE 1000 //ms
 #define CONN_TIMEOUT 8000
 
-U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, U8X8_PIN_NONE);//Mini
-Encoder Enc(ENC_A_PIN, ENC_B_PIN);
-char SerialBuffer[640];
+U8G2_ST7920_128X64_1_HW_SPI gLCD(U8G2_R0, U8X8_PIN_NONE);//Mini
+Encoder gEnc1(ENC_A_PIN, ENC_B_PIN);
+char gSerialBuffer[640];
+unsigned char gFlags;
+unsigned char gCurrentPage;
+char gPrinterName[32];
+unsigned char gNumTools;
 Data gData;
 
 int ReadResponse();
@@ -45,8 +49,8 @@ void setup()
   Serial.setTimeout(CONN_TIMEOUT);
   DEBUG_PRINT_P("hello world");
   
-  u8g2.begin();
-  u8g2.setFont(u8g2_font_5x7_tr);
+  gLCD.begin();
+  gLCD.setFont(u8g2_font_5x7_tr);
   UpdateConnecting();
 }
 
@@ -54,12 +58,12 @@ void EncSwInt()
 {
   if (digitalRead(ENC_SW_PIN))
   {
-    if (!(gData.Flags & FLAGS_ENC_SW_PREV))
-      gData.Flags |= (FLAGS_ENC_SW_PREV | FLAGS_ENC_SW);
+    if (!(gFlags & FLAGS_ENC_SW_PREV))
+      gFlags |= (FLAGS_ENC_SW_PREV | FLAGS_ENC_SW);
   }
   else
   {
-    gData.Flags &= ~FLAGS_ENC_SW_PREV;
+    gFlags &= ~FLAGS_ENC_SW_PREV;
   }
 }
 
@@ -67,18 +71,18 @@ void ResetSwInt()
 {
   if (digitalRead(RST_SW_PIN))
   {
-    if (!(gData.Flags & FLAGS_RST_SW_PREV))
-      gData.Flags |= (FLAGS_RST_SW_PREV | FLAGS_RST_SW);
+    if (!(gFlags & FLAGS_RST_SW_PREV))
+      gFlags |= (FLAGS_RST_SW_PREV | FLAGS_RST_SW);
   }
   else
   {
-    gData.Flags &= ~FLAGS_RST_SW_PREV;
+    gFlags &= ~FLAGS_RST_SW_PREV;
   }
 }
 
 void loop()
 {
-  switch (gData.CurrentPage)
+  switch (gCurrentPage)
   {
   case PG_MAIN:
     UpdateMain();
@@ -181,25 +185,25 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
   unsigned char Index;
   char** PosIter;
 
-  gData.P.MS.FractionPrinted = NULL;
+  gData.MS.FractionPrinted = NULL;
 
   while (result > 0)
   {
     if (strcmpJP(PSTR("myName"), v1begin, v1len) == 0)
     {
-      strcpyJ(gData.PrinterName, v2begin, min(31,v2len));
+      strcpyJ(gPrinterName, v2begin, min(31,v2len));
     }
     else if (strcmpJP(PSTR("numTools"), v1begin, v1len) == 0)
     {
-      gData.NumTools = v2begin[0] - '0';
+      gNumTools = v2begin[0] - '0';
     }
     else if (strcmpJP(PSTR("status"), v1begin, v1len) == 0)
     {
-      gData.P.MS.StatusStr = v2begin[0];
+      gData.MS.StatusStr = v2begin[0];
     }
     else if (strcmpJP(PSTR("pos"), v1begin, v1len) == 0)
     {
-      PosIter = &gData.P.MS.Pos.X;
+      PosIter = &gData.MS.Pos.X;
       result = json_arr(&astate, v2begin, &v1type, &v1begin, &v1len);
       
       while (result > 0)
@@ -207,7 +211,7 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
         *PosIter = v1begin;
         PosIter++;
 
-        if (PosIter > &gData.P.MS.Pos.Z)
+        if (PosIter > &gData.MS.Pos.Z)
           break;
         
         result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
@@ -215,16 +219,16 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
     }
     else if (strcmpJP(PSTR("heaters"), v1begin, v1len) == 0)
     {
-      gData.P.MS.HeaterCount = 0;
+      gData.MS.HeaterCount = 0;
       
       result = json_arr(&astate, v2begin, &v1type, &v1begin, &v1len);
       
       while (result > 0)
       {
-        gData.P.MS.Heaters[gData.P.MS.HeaterCount].Current = v1begin;
-        gData.P.MS.HeaterCount++;
+        gData.MS.Heaters[gData.MS.HeaterCount].Current = v1begin;
+        gData.MS.HeaterCount++;
 
-        if (gData.P.MS.HeaterCount == HEATERS_MAX)
+        if (gData.MS.HeaterCount == HEATERS_MAX)
           break;
         
         result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
@@ -238,7 +242,7 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
       
       while (result > 0)
       {
-        gData.P.MS.Heaters[Index].Active = v1begin;
+        gData.MS.Heaters[Index].Active = v1begin;
         Index++;
 
         if (Index == HEATERS_MAX)
@@ -255,7 +259,7 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
       
       while (result > 0)
       {
-        gData.P.MS.Heaters[Index].Standby = v1begin;
+        gData.MS.Heaters[Index].Standby = v1begin;
         Index++;
 
         if (Index == HEATERS_MAX)
@@ -272,7 +276,7 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
       
       while (result > 0)
       {
-        gData.P.MS.Heaters[Index].Status = v1begin[0] - '0';
+        gData.MS.Heaters[Index].Status = v1begin[0] - '0';
         Index++;
 
         if (Index == HEATERS_MAX)
@@ -284,13 +288,13 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
     else if (strcmpJP(PSTR("tool"), v1begin, v1len) == 0)
     {
       if (isdigit(v2begin[0]))
-        gData.P.MS.Tool = v2begin[0] - '0';
+        gData.MS.Tool = v2begin[0] - '0';
       else
-        gData.P.MS.Tool = -1;
+        gData.MS.Tool = -1;
     }
     else if (strcmpJP(PSTR("fraction_printed"), v1begin, v1len) == 0)
     {
-      gData.P.MS.FractionPrinted = v2begin;
+      gData.MS.FractionPrinted = v2begin;
     }
     
     result = json_obj(&jstate, NULL, &v1type, &v1begin, &v1len, &v2type, &v2begin, &v2len);

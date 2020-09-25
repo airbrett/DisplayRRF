@@ -18,20 +18,20 @@ void UpdateConnecting()
   if (ConnectSequence[ConnectIndex] == 0)
     ConnectIndex = 0;
 
-  u8g2.firstPage();
+  gLCD.firstPage();
   do
   {
     ConnectingScreen();
   }
-  while (u8g2.nextPage());
+  while (gLCD.nextPage());
 
-  const int BytesRead = MakeRequestP(PSTR("M408 S1"), SerialBuffer, sizeof(SerialBuffer));
+  const int BytesRead = MakeRequestP(PSTR("M408 S1"), gSerialBuffer, sizeof(gSerialBuffer));
   
   if (BytesRead)
   {
-    if (ParseM408S1(SerialBuffer, BytesRead))
+    if (ParseM408S1(gSerialBuffer, BytesRead))
     {
-      gData.CurrentPage = PG_MAIN;
+      gCurrentPage = PG_MAIN;
     }
     else
     {
@@ -42,8 +42,8 @@ void UpdateConnecting()
 
 void ConnectingScreen()
 {
-  u8g2.setFont(u8g2_font_unifont_t_75);
-  u8g2.drawGlyph(60, 45, 9600 + ConnectSequence[ConnectIndex]);
-  u8g2.setFont(u8g2_font_5x7_tr);
+  gLCD.setFont(u8g2_font_unifont_t_75);
+  gLCD.drawGlyph(60, 45, 9600 + ConnectSequence[ConnectIndex]);
+  gLCD.setFont(u8g2_font_5x7_tr);
   DrawStrP(40,30,PSTR("Connecting"));
 }

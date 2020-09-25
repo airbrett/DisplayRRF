@@ -4,28 +4,28 @@ char* PrintFloat(char* Str, unsigned char precision, bool padminus)
 {
   if (*Str == '-')
   {
-    u8g2.print(*Str);
+    gLCD.print(*Str);
     Str++;
   }
   else if (padminus)
   {
-    u8g2.print(' ');
+    gLCD.print(' ');
   }
   
   while (isdigit(*Str))
   {
-    u8g2.print(*Str);
+    gLCD.print(*Str);
     Str++;
   }
 
   if (*Str == '.')
   {
-    u8g2.print(*Str);
+    gLCD.print(*Str);
     Str++;
 
     while (isdigit(*Str) && precision > 0)
     {
-      u8g2.print(*Str);
+      gLCD.print(*Str);
       Str++;
       precision--;
     }
@@ -45,14 +45,14 @@ void DrawStrP(PGM_P Str)
     if (!val)
       break;
       
-    u8g2.print(val);
+    gLCD.print(val);
     Str++;
   }
 }
 
 void DrawStrP(const int x, const int y, PGM_P Str)
 {
-  u8g2.setCursor(x, y);
+  gLCD.setCursor(x, y);
   DrawStrP(Str);
 }
 
@@ -62,14 +62,14 @@ void DrawStrJ(const char* Str, int Len)
   
   while (Str != End)
   {
-    u8g2.print(*Str);
+    gLCD.print(*Str);
     Str++;
   }
 }
 
 void DrawStrJ(const int x, const int y, const char* Str, int Len)
 {
-  u8g2.setCursor(x, y);
+  gLCD.setCursor(x, y);
   DrawStrJ(Str, Len);
 }
 
@@ -90,7 +90,7 @@ unsigned int StrWidthP(PGM_P Str)
     if (Width > 0)
       Width += 1;
       
-    Width += u8g2.getStrWidth(Buf);
+    Width += gLCD.getStrWidth(Buf);
     Str++;
   }
 
