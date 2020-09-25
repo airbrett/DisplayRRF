@@ -136,9 +136,14 @@ void DrawPrintMenu()
     gFlags &= ~FLAGS_ENC_SW;
     
     if (EncPos == 0)
+    {
       gCurrentPage = PG_MENU1;
+    }
     else
+    {
       Print(EncPos - 1);
+      gCurrentPage = PG_MAIN;
+    }
   }
 
   if (!gData.RM.FileArray)
