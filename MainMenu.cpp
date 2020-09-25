@@ -17,35 +17,35 @@ static void SendM32(const char* Macro, int MacroLen);
 
 void DrawMenu()
 {
-  char EncPos = Enc.read()/4;
+  char EncPos = gEnc1.read()/4;
 
   if (EncPos < 0)
   {
     EncPos = 0;
-    Enc.write(0);
+    gEnc1.write(0);
   }
   
-  if (gData.Flags & FLAGS_ENC_SW)
+  if (gFlags & FLAGS_ENC_SW)
   {
-    gData.Flags &= ~FLAGS_ENC_SW;
+    gFlags &= ~FLAGS_ENC_SW;
 
     switch (EncPos)
     {
       case 0:
-        gData.CurrentPage = PG_MAIN;
+        gCurrentPage = PG_MAIN;
         break;
       case 1:
-        gData.CurrentPage = PG_PRINT;
-        gData.P.RM.FileArray = NULL;
+        gCurrentPage = PG_PRINT;
+        gData.RM.FileArray = NULL;
         break;
       case 2:
-        gData.CurrentPage = PG_RUNMACRO;
-        gData.P.RM.FileArray = NULL;
+        gCurrentPage = PG_RUNMACRO;
+        gData.RM.FileArray = NULL;
         break;
     }
   }
   
-  u8g2.firstPage();
+  gLCD.firstPage();
   do
   {
     DrawStrP(5,7,PSTR("Back"));
@@ -55,51 +55,51 @@ void DrawMenu()
 
     DrawStrP(0,7*EncPos+7,PSTR(">"));
   }
-  while (u8g2.nextPage());
+  while (gLCD.nextPage());
 }
 
 void DrawMacrosMenu()
 {
-  char EncPos = Enc.read()/4;
+  char EncPos = gEnc1.read()/4;
 
   if (EncPos < 0)
   {
     EncPos = 0;
-    Enc.write(0);
+    gEnc1.write(0);
   }
   
-  if (gData.Flags & FLAGS_ENC_SW)
+  if (gFlags & FLAGS_ENC_SW)
   {
-    gData.Flags &= ~FLAGS_ENC_SW;
+    gFlags &= ~FLAGS_ENC_SW;
     
     if (EncPos == 0)
-      gData.CurrentPage = PG_MENU1;
+      gCurrentPage = PG_MENU1;
     else
       RunMacro(EncPos - 1);
   }
 
-  if (!gData.P.RM.FileArray)
+  if (!gData.RM.FileArray)
   {
-    const int BytesRead = MakeRequestP(PSTR("M20 S2 P\"0:/macros\""), SerialBuffer, sizeof(SerialBuffer));
+    const int BytesRead = MakeRequestP(PSTR("M20 S2 P\"0:/macros\""), gSerialBuffer, sizeof(gSerialBuffer));
     
     if (BytesRead)
     {
-      if (!ParseM20(SerialBuffer, BytesRead))
+      if (!ParseM20(gSerialBuffer, BytesRead))
         DEBUG_PRINT_P("Bad parse");
     }
   }
 
   PGM_P Text = PSTR("Run Macro");
-  u8g2.firstPage();
+  gLCD.firstPage();
   do
   {
-    DrawStrP(u8g2.getDisplayWidth()/2-StrWidthP(Text)/2, 7, Text);
-    u8g2.drawLine(0,8,u8g2.getDisplayWidth(),8);
+    DrawStrP(gLCD.getDisplayWidth()/2-StrWidthP(Text)/2, 7, Text);
+    gLCD.drawLine(0,8,gLCD.getDisplayWidth(),8);
     DrawStrP(5,16,PSTR("Back"));
 
     DrawStrP(0,7*EncPos+16,PSTR(">"));
 
-    if (gData.P.RM.FileArray)
+    if (gData.RM.FileArray)
     {
       char* astate;
       unsigned char v1type;
@@ -107,7 +107,7 @@ void DrawMacrosMenu()
       int v1len;
       unsigned char Y = 23;
       
-      char result = json_arr(&astate, gData.P.RM.FileArray, &v1type, &v1begin, &v1len);
+      char result = json_arr(&astate, gData.RM.FileArray, &v1type, &v1begin, &v1len);
       
       while (result > 0)
       {
@@ -118,51 +118,51 @@ void DrawMacrosMenu()
       }
     }
   }
-  while (u8g2.nextPage());
+  while (gLCD.nextPage());
 }
 
 void DrawPrintMenu()
 {
-  char EncPos = Enc.read()/4;
+  char EncPos = gEnc1.read()/4;
 
   if (EncPos < 0)
   {
     EncPos = 0;
-    Enc.write(0);
+    gEnc1.write(0);
   }
   
-  if (gData.Flags & FLAGS_ENC_SW)
+  if (gFlags & FLAGS_ENC_SW)
   {
-    gData.Flags &= ~FLAGS_ENC_SW;
+    gFlags &= ~FLAGS_ENC_SW;
     
     if (EncPos == 0)
-      gData.CurrentPage = PG_MENU1;
+      gCurrentPage = PG_MENU1;
     else
       Print(EncPos - 1);
   }
 
-  if (!gData.P.RM.FileArray)
+  if (!gData.RM.FileArray)
   {
-    const int BytesRead = MakeRequestP(PSTR("M20 S2 P\"0:/gcodes\""), SerialBuffer, sizeof(SerialBuffer));
+    const int BytesRead = MakeRequestP(PSTR("M20 S2 P\"0:/gcodes\""), gSerialBuffer, sizeof(gSerialBuffer));
     
     if (BytesRead)
     {
-      if (!ParseM20(SerialBuffer, BytesRead))
+      if (!ParseM20(gSerialBuffer, BytesRead))
         DEBUG_PRINT_P("Bad parse");
     }
   }
 
   PGM_P Text = PSTR("Print");
-  u8g2.firstPage();
+  gLCD.firstPage();
   do
   {
-    DrawStrP(u8g2.getDisplayWidth()/2-StrWidthP(Text)/2, 7, Text);
-    u8g2.drawLine(0,8,u8g2.getDisplayWidth(),8);
+    DrawStrP(gLCD.getDisplayWidth()/2-StrWidthP(Text)/2, 7, Text);
+    gLCD.drawLine(0,8,gLCD.getDisplayWidth(),8);
     DrawStrP(5,16,PSTR("Back"));
 
     DrawStrP(0,7*EncPos+16,PSTR(">"));
 
-    if (gData.P.RM.FileArray)
+    if (gData.RM.FileArray)
     {
       char* astate;
       unsigned char v1type;
@@ -170,7 +170,7 @@ void DrawPrintMenu()
       int v1len;
       unsigned char Y = 23;
       
-      char result = json_arr(&astate, gData.P.RM.FileArray, &v1type, &v1begin, &v1len);
+      char result = json_arr(&astate, gData.RM.FileArray, &v1type, &v1begin, &v1len);
       
       while (result > 0)
       {
@@ -181,7 +181,7 @@ void DrawPrintMenu()
       }
     }
   }
-  while (u8g2.nextPage());
+  while (gLCD.nextPage());
 }
 
 bool ParseM20(const char* JSON, const int BytesRead)
@@ -198,7 +198,7 @@ bool ParseM20(const char* JSON, const int BytesRead)
   while (result > 0)
   {
     if (strcmpJP(PSTR("files"), v1begin, v1len) == 0)
-      gData.P.RM.FileArray = v2begin;
+      gData.RM.FileArray = v2begin;
     
     result = json_obj(&jstate, NULL, &v1type, &v1begin, &v1len, &v2type, &v2begin, &v2len);
   }
@@ -212,7 +212,7 @@ void Print(int Index)
   unsigned char v1type;
   char* v1begin;
   int v1len;
-  char result = json_arr(&astate, gData.P.RM.FileArray, &v1type, &v1begin, &v1len);
+  char result = json_arr(&astate, gData.RM.FileArray, &v1type, &v1begin, &v1len);
   
   while (result > 0)
   {
@@ -233,7 +233,7 @@ void RunMacro(int Index)
   unsigned char v1type;
   char* v1begin;
   int v1len;
-  char result = json_arr(&astate, gData.P.RM.FileArray, &v1type, &v1begin, &v1len);
+  char result = json_arr(&astate, gData.RM.FileArray, &v1type, &v1begin, &v1len);
   
   while (result > 0)
   {

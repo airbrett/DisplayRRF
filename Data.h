@@ -32,49 +32,45 @@ enum
 
 #define HEATERS_MAX 4
 
-struct Data
+
+union Data
 {
-	unsigned char CurrentPage;
-	unsigned char Flags;
-
-	char PrinterName[32];
-	unsigned char NumTools;
-	
-	union
+	struct
 	{
+		char StatusStr;
+		char* PosStr;
+
 		struct
 		{
-			char StatusStr;
-			char* PosStr;
+			char* X;
+			char* Y;
+			char* Z;
+		} Pos;
 
-			struct
-			{
-			  char* X;
-			  char* Y;
-			  char* Z;
-			} Pos;
-
-			struct
-			{
-			  char* Current;
-			  char* Active;
-			  char* Standby;
-			  unsigned char Status;
-			} Heaters[HEATERS_MAX];
-
-			unsigned char HeaterCount;
-			unsigned char Tool;
-			char* FractionPrinted;
-		} MS;
-		
 		struct
 		{
-			char* FileArray;
-		} RM;
-	} P;
+			char* Current;
+			char* Active;
+			char* Standby;
+			unsigned char Status;
+		} Heaters[HEATERS_MAX];
+
+		unsigned char HeaterCount;
+		unsigned char Tool;
+		char* FractionPrinted;
+	} MS;
+	
+	struct
+	{
+		char* FileArray;
+	} RM;
 };
 
+extern unsigned char gNumTools;
+extern char gPrinterName[32];
+extern unsigned char gCurrentPage;
+extern unsigned char gFlags;
 extern Data gData;
-extern Encoder Enc;
-extern U8G2_ST7920_128X64_1_HW_SPI u8g2;
-extern char SerialBuffer[640];
+extern Encoder gEnc1;
+extern U8G2_ST7920_128X64_1_HW_SPI gLCD;
+extern char gSerialBuffer[640];
