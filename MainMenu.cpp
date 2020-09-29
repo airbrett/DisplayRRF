@@ -1,5 +1,6 @@
 #include "Data.h"
 #include "Utility.h"
+#include "Menu.h"
 
 extern "C"
 {
@@ -17,176 +18,82 @@ static void SendM32(const char* Macro, int MacroLen);
 
 void DrawMenu()
 {
-  char EncPos = gEnc1.read()/4;
-
-  if (EncPos < 0)
-  {
-    EncPos = 0;
-    gEnc1.write(0);
-  }
-  
-  if (gFlags & FLAGS_ENC_SW)
-  {
-    gFlags &= ~FLAGS_ENC_SW;
-
-    switch (EncPos)
-    {
-      case 0:
-        gCurrentPage = PG_MAIN;
-        break;
-      case 1:
-        gCurrentPage = PG_PRINT;
-        gData.RM.FileArray = NULL;
-        break;
-      case 2:
-        gCurrentPage = PG_RUNMACRO;
-        gData.RM.FileArray = NULL;
-        break;
-    }
-  }
-  
-  gLCD.firstPage();
-  do
-  {
-    DrawStrP(5,7,PSTR("Back"));
-    DrawStrP(5,14,PSTR("Print"));
-    DrawStrP(5,21,PSTR("Run Macro"));
-    DrawStrP(5,28,PSTR("Preheat"));
-
-    DrawStrP(0,7*EncPos+7,PSTR(">"));
-  }
-  while (gLCD.nextPage());
+	MENU_BEGIN("Main Menu")
+	MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MAIN; gEnc1.write(0))
+	MENU_ITEM_P(PSTR("Print"), gCurrentPage = PG_PRINT; gData.RM.FileArray = NULL; gEnc1.write(0))
+	MENU_ITEM_P(PSTR("Run Macro"), gCurrentPage = PG_RUNMACRO; gData.RM.FileArray = NULL; gEnc1.write(0))
+	MENU_ITEM_P(PSTR("Babystep"), ((void)0))
+	MENU_END()
 }
 
 void DrawMacrosMenu()
 {
-  char EncPos = gEnc1.read()/4;
+	if (!gData.RM.FileArray)
+	{
+		const int BytesRead = MakeRequestP(PSTR("M20 S2 P\"0:/macros\""), gSerialBuffer, sizeof(gSerialBuffer));
 
-  if (EncPos < 0)
-  {
-    EncPos = 0;
-    gEnc1.write(0);
-  }
+		if (BytesRead)
+		{
+			if (!ParseM20(gSerialBuffer, BytesRead))
+				DEBUG_PRINT_P("Bad parse");
+		}
+	}
   
-  if (gFlags & FLAGS_ENC_SW)
-  {
-    gFlags &= ~FLAGS_ENC_SW;
-    
-    if (EncPos == 0)
-      gCurrentPage = PG_MENU1;
-    else
-      RunMacro(EncPos - 1);
-  }
+	MENU_BEGIN("Run Macro")
+	MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MENU1)
+	
+	if (gData.RM.FileArray)
+	{
+		char* astate;
+		unsigned char v1type;
+		char* v1begin;
+		int v1len;
 
-  if (!gData.RM.FileArray)
-  {
-    const int BytesRead = MakeRequestP(PSTR("M20 S2 P\"0:/macros\""), gSerialBuffer, sizeof(gSerialBuffer));
-    
-    if (BytesRead)
-    {
-      if (!ParseM20(gSerialBuffer, BytesRead))
-        DEBUG_PRINT_P("Bad parse");
-    }
-  }
+		char result = json_arr(&astate, gData.RM.FileArray, &v1type, &v1begin, &v1len);
 
-  PGM_P Text = PSTR("Run Macro");
-  gLCD.firstPage();
-  do
-  {
-    DrawStrP(gLCD.getDisplayWidth()/2-StrWidthP(Text)/2, 7, Text);
-    gLCD.drawLine(0,8,gLCD.getDisplayWidth(),8);
-    DrawStrP(5,16,PSTR("Back"));
-
-    DrawStrP(0,7*EncPos+16,PSTR(">"));
-
-    if (gData.RM.FileArray)
-    {
-      char* astate;
-      unsigned char v1type;
-      char* v1begin;
-      int v1len;
-      unsigned char Y = 23;
-      
-      char result = json_arr(&astate, gData.RM.FileArray, &v1type, &v1begin, &v1len);
-      
-      while (result > 0)
-      {
-        DrawStrJ(5, Y, v1begin, v1len);
-        Y += 7;
-        
-        result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
-      }
-    }
-  }
-  while (gLCD.nextPage());
+		while (result > 0)
+		{
+			MENU_ITEM_J(v1begin, v1len, RunMacro(EncPos - 1))
+			result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
+		}
+	}
+	
+	MENU_END()
 }
 
 void DrawPrintMenu()
 {
-  char EncPos = gEnc1.read()/4;
+	if (!gData.RM.FileArray)
+	{
+		const int BytesRead = MakeRequestP(PSTR("M20 S2 P\"0:/gcodes\""), gSerialBuffer, sizeof(gSerialBuffer));
 
-  if (EncPos < 0)
-  {
-    EncPos = 0;
-    gEnc1.write(0);
-  }
+		if (BytesRead)
+		{
+			if (!ParseM20(gSerialBuffer, BytesRead))
+				DEBUG_PRINT_P("Bad parse");
+		}
+	}
   
-  if (gFlags & FLAGS_ENC_SW)
-  {
-    gFlags &= ~FLAGS_ENC_SW;
-    
-    if (EncPos == 0)
-    {
-      gCurrentPage = PG_MENU1;
-    }
-    else
-    {
-      Print(EncPos - 1);
-      gCurrentPage = PG_MAIN;
-    }
-  }
+	MENU_BEGIN("Print")
+	MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MENU1; gEnc1.write(0))
+	
+	if (gData.RM.FileArray)
+	{
+		char* astate;
+		unsigned char v1type;
+		char* v1begin;
+		int v1len;
 
-  if (!gData.RM.FileArray)
-  {
-    const int BytesRead = MakeRequestP(PSTR("M20 S2 P\"0:/gcodes\""), gSerialBuffer, sizeof(gSerialBuffer));
-    
-    if (BytesRead)
-    {
-      if (!ParseM20(gSerialBuffer, BytesRead))
-        DEBUG_PRINT_P("Bad parse");
-    }
-  }
+		char result = json_arr(&astate, gData.RM.FileArray, &v1type, &v1begin, &v1len);
 
-  PGM_P Text = PSTR("Print");
-  gLCD.firstPage();
-  do
-  {
-    DrawStrP(gLCD.getDisplayWidth()/2-StrWidthP(Text)/2, 7, Text);
-    gLCD.drawLine(0,8,gLCD.getDisplayWidth(),8);
-    DrawStrP(5,16,PSTR("Back"));
-
-    DrawStrP(0,7*EncPos+16,PSTR(">"));
-
-    if (gData.RM.FileArray)
-    {
-      char* astate;
-      unsigned char v1type;
-      char* v1begin;
-      int v1len;
-      unsigned char Y = 23;
-      
-      char result = json_arr(&astate, gData.RM.FileArray, &v1type, &v1begin, &v1len);
-      
-      while (result > 0)
-      {
-        DrawStrJ(5, Y, v1begin, v1len);
-        Y += 7;
-        
-        result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
-      }
-    }
-  }
-  while (gLCD.nextPage());
+		while (result > 0)
+		{
+			MENU_ITEM_J(v1begin, v1len, Print(EncPos - 1); gCurrentPage = PG_MAIN; gEnc1.write(0))
+			result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
+		}
+	}
+	
+	MENU_END()
 }
 
 bool ParseM20(const char* JSON, const int BytesRead)

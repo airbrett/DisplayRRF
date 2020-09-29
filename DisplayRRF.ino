@@ -52,6 +52,7 @@ void setup()
   gLCD.begin();
   gLCD.setFont(u8g2_font_5x7_tr);
   UpdateConnecting();
+  //gCurrentPage = PG_MENU1;
 }
 
 void EncSwInt()
