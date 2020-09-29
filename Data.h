@@ -37,7 +37,6 @@ union Data
 {
 	struct
 	{
-		char StatusStr;
 		char* PosStr;
 
 		struct
@@ -70,6 +69,7 @@ extern unsigned char gNumTools;
 extern char gPrinterName[32];
 extern unsigned char gCurrentPage;
 extern unsigned char gFlags;
+extern char gStatusStr;
 extern Data gData;
 extern Encoder gEnc1;
 extern U8G2_ST7920_128X64_1_HW_SPI gLCD;

@@ -20,8 +20,21 @@ void DrawMenu()
 {
 	MENU_BEGIN("Main Menu")
 	MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MAIN; gEnc1.write(0))
-	MENU_ITEM_P(PSTR("Print"), gCurrentPage = PG_PRINT; gData.RM.FileArray = NULL; gEnc1.write(0))
-	MENU_ITEM_P(PSTR("Run Macro"), gCurrentPage = PG_RUNMACRO; gData.RM.FileArray = NULL; gEnc1.write(0))
+  if (gStatusStr == 'I')
+  {
+	  MENU_ITEM_P(PSTR("Print"), gCurrentPage = PG_PRINT; gData.RM.FileArray = NULL; gEnc1.write(0))
+	  MENU_ITEM_P(PSTR("Run Macro"), gCurrentPage = PG_RUNMACRO; gData.RM.FileArray = NULL; gEnc1.write(0))
+  }
+  else if (gStatusStr == 'P')
+  {
+    MENU_ITEM_P(PSTR("Pause"), ((void)0))
+    MENU_ITEM_P(PSTR("Stop"), ((void)0))
+  }
+  else if (gStatusStr == 'A')
+  {
+    MENU_ITEM_P(PSTR("Resume"), ((void)0))
+    MENU_ITEM_P(PSTR("Stop"), ((void)0))
+  }
 	MENU_ITEM_P(PSTR("Babystep"), ((void)0))
 	MENU_END()
 }

@@ -58,7 +58,7 @@ void MainScreen()
   gLCD.setFont(u8g2_font_5x7_tr);
   gLCD.drawStr(0, 7, gPrinterName);
 
-  PGM_P DecodedStatus = DecodeStatus(gData.MS.StatusStr);
+  PGM_P DecodedStatus = DecodeStatus(gStatusStr);
   DrawStrP(128 - StrWidthP(DecodedStatus), 7, DecodedStatus);
   
   gLCD.drawLine(0, 8, 128, 8);

@@ -23,6 +23,7 @@ extern "C"
 U8G2_ST7920_128X64_1_HW_SPI gLCD(U8G2_R0, U8X8_PIN_NONE);//Mini
 Encoder gEnc1(ENC_A_PIN, ENC_B_PIN);
 char gSerialBuffer[640];
+char gStatusStr;
 unsigned char gFlags;
 unsigned char gCurrentPage;
 char gPrinterName[32];
@@ -200,7 +201,7 @@ bool ParseM408S1(const char* Buffer, const int BytesRead)
     }
     else if (strcmpJP(PSTR("status"), v1begin, v1len) == 0)
     {
-      gData.MS.StatusStr = v2begin[0];
+      gStatusStr = v2begin[0];
     }
     else if (strcmpJP(PSTR("pos"), v1begin, v1len) == 0)
     {
