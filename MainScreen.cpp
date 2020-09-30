@@ -1,4 +1,4 @@
-#include "Data.h"
+#include "Globals.h"
 #include "Utility.h"
 
 extern int MakeRequestP(PGM_P Req, char* Resp, const int Len);
