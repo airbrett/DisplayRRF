@@ -138,14 +138,17 @@ int MakeRequestP(PGM_P Req, char* Resp, const int Len)
     Req++;
   }
   Serial.write('\n');
+
+  if (Resp)
+  {
+    const size_t BytesRead = Serial.readBytesUntil('\n', Resp, Len-1);
   
-  const size_t BytesRead = Serial.readBytesUntil('\n', Resp, Len-1);
-
-  if (BytesRead < 1)
-    return 0;//Timeout or some other mess
-
-  Resp[BytesRead] = 0;
-  return BytesRead+1;
+    if (BytesRead < 1)
+      return 0;//Timeout or some other mess
+  
+    Resp[BytesRead] = 0;
+    return BytesRead+1;
+  }
 #else
   return 0;
 #endif
