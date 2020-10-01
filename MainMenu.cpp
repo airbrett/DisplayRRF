@@ -27,13 +27,13 @@ void DrawMenu()
   }
   else if (gStatusStr == 'P')
   {
-    MENU_ITEM_P(PSTR("Pause"), ((void)0))
-    MENU_ITEM_P(PSTR("Stop"), ((void)0))
+    MENU_ITEM_P(PSTR("Pause"), MakeRequestP(PSTR("M25"), NULL, 0); gCurrentPage = PG_MAIN)
+    MENU_ITEM_P(PSTR("Stop"), MakeRequestP(PSTR("M0"), NULL, 0); gCurrentPage = PG_MAIN)
   }
   else if (gStatusStr == 'A')
   {
-    MENU_ITEM_P(PSTR("Resume"), ((void)0))
-    MENU_ITEM_P(PSTR("Stop"), ((void)0))
+    MENU_ITEM_P(PSTR("Resume"), MakeRequestP(PSTR("M24"), NULL, 0); gCurrentPage = PG_MAIN)
+    MENU_ITEM_P(PSTR("Stop"), MakeRequestP(PSTR("M0"), NULL, 0); gCurrentPage = PG_MAIN)
   }
 	MENU_ITEM_P(PSTR("Babystep"), ((void)0))
 	MENU_END()
