@@ -24,6 +24,7 @@ do\
 \
 	if (gFlags & FLAGS_ENC_SW && EncPos == ItemNum)\
 	{\
+    gFlags &= ~FLAGS_ENC_SW;\
 		sel_code;\
 	}\
 \
@@ -34,6 +35,7 @@ do\
 \
 	if (gFlags & FLAGS_ENC_SW && EncPos == ItemNum)\
 	{\
+    gFlags &= ~FLAGS_ENC_SW;\
 		sel_code;\
 	}\
 \
@@ -47,6 +49,5 @@ do\
   }\
 	\
 	DrawStrP(0,7*EncPos+16,PSTR(">"));\
-	gFlags &= ~FLAGS_ENC_SW;\
 }\
 while (gLCD.nextPage());
