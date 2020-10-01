@@ -155,6 +155,10 @@ int MakeRequest(const char* Req, char* Resp, const int Len)
 {
   RateLimit();
 
+  //Clear out anything that came in between requests. Maybe there is an "ok" from a previous request?
+  while (Serial.available())
+    Serial.read();
+
   Serial.println(Req);
 
   if (Resp)
