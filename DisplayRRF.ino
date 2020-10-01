@@ -114,9 +114,9 @@ int MakeRequestP(PGM_P Req, char* Resp, const int Len)
   RateLimit();
 
 #ifndef DEBUG_NO_DATA
-  //Clear out anything that came in between requests. I don't know if this is necessary
-  //while (Serial.available())
-  //  Serial.read();
+  //Clear out anything that came in between requests. Maybe there is an "ok" from a previous request?
+  while (Serial.available())
+    Serial.read();
   
   while (true)
   {
