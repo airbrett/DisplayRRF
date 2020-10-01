@@ -90,7 +90,10 @@ void loop()
     break;
   case PG_PRINT:
     DrawPrintMenu();
-    break;  
+    break;
+   case PG_BABYSTEP:
+    DrawBabyStepMenu();
+    break;
   }
 }
 

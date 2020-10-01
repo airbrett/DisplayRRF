@@ -35,7 +35,7 @@ void DrawMenu()
     MENU_ITEM_P(PSTR("Resume"), MakeRequestP(PSTR("M24"), NULL, 0); gCurrentPage = PG_MAIN)
     MENU_ITEM_P(PSTR("Stop"), MakeRequestP(PSTR("M0"), NULL, 0); gCurrentPage = PG_MAIN)
   }
-	MENU_ITEM_P(PSTR("Babystep"), ((void)0))
+	MENU_ITEM_P(PSTR("Babystep"), gCurrentPage = PG_BABYSTEP; gEnc1.write(0))
 	MENU_END()
 }
 
@@ -107,6 +107,15 @@ void DrawPrintMenu()
 	}
 	
 	MENU_END()
+}
+
+void DrawBabyStepMenu()
+{
+  MENU_BEGIN("Babystep")
+  MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MENU1; gEnc1.write(0))
+  MENU_ITEM_P(PSTR("Z +0.02"), MakeRequestP(PSTR("M290 S0.02"), NULL, 0))
+  MENU_ITEM_P(PSTR("Z -0.02"), MakeRequestP(PSTR("M290 S-0.02"), NULL, 0))
+  MENU_END()
 }
 
 bool ParseM20(const char* JSON, const int BytesRead)

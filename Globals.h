@@ -22,7 +22,8 @@ enum
   PG_MAIN,
   PG_MENU1,
   PG_RUNMACRO,
-  PG_PRINT
+  PG_PRINT,
+  PG_BABYSTEP
 };
 
 #define FLAGS_ENC_SW 0x1
