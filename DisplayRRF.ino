@@ -74,6 +74,12 @@ void ResetSwInt()
 
 void loop()
 {
+  if (gFlags & FLAGS_RST_SW)
+  {
+    gFlags &= ~FLAGS_RST_SW;
+    MakeRequestP(PSTR("M999"), NULL, 0); 
+  };
+    
   switch (gCurrentPage)
   {
   case PG_MAIN:
