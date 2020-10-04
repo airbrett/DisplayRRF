@@ -12,6 +12,7 @@ extern "C"
 #include "Utility.h"
 #include "MainScreen.h"
 #include "MainMenu.h"
+//#include "Menu.h"
 
 #include <PinChangeInterrupt.h>
 
@@ -43,6 +44,7 @@ void setup()
   gLCD.begin();
   gLCD.setFont(u8g2_font_5x7_tr);
   UpdateConnecting();
+  //MENU_RESET();
   //gCurrentPage = PG_MENU1;
 }
 

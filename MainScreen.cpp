@@ -1,5 +1,6 @@
 #include "Globals.h"
 #include "Utility.h"
+#include "Menu.h"
 
 extern int MakeRequestP(PGM_P Req, char* Resp, const int Len);
 extern bool ParseM408S1(const char* Buffer, const int BytesRead);
@@ -39,7 +40,7 @@ void UpdateMain()
   {
     gFlags &= ~FLAGS_ENC_SW;
     gCurrentPage = PG_MENU1;
-    gEnc1.write(0);
+    MENU_RESET();
   }
 
   if (Redraw)

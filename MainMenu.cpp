@@ -19,11 +19,11 @@ static void SendM32(const char* Macro, int MacroLen);
 void DrawMenu()
 {
 	MENU_BEGIN("Main Menu")
-	MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MAIN; gEnc1.write(0))
+	MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MAIN;)
   if (gStatusStr == 'I')
   {
-	  MENU_ITEM_P(PSTR("Print"), gCurrentPage = PG_PRINT; gData.RM.FileArray = NULL; gEnc1.write(0))
-	  MENU_ITEM_P(PSTR("Run Macro"), gCurrentPage = PG_RUNMACRO; gData.RM.FileArray = NULL; gEnc1.write(0))
+	  MENU_ITEM_P(PSTR("Print"), gCurrentPage = PG_PRINT; gData.RM.FileArray = NULL;)
+	  MENU_ITEM_P(PSTR("Run Macro"), gCurrentPage = PG_RUNMACRO; gData.RM.FileArray = NULL;)
   }
   else if (gStatusStr == 'P')
   {
@@ -35,7 +35,7 @@ void DrawMenu()
     MENU_ITEM_P(PSTR("Resume"), MakeRequestP(PSTR("M24"), NULL, 0); gCurrentPage = PG_MAIN)
     MENU_ITEM_P(PSTR("Stop"), MakeRequestP(PSTR("M0"), NULL, 0); gCurrentPage = PG_MAIN)
   }
-	MENU_ITEM_P(PSTR("Babystep"), gCurrentPage = PG_BABYSTEP; gEnc1.write(0))
+	MENU_ITEM_P(PSTR("Babystep"), gCurrentPage = PG_BABYSTEP;)
 	MENU_END()
 }
 
@@ -66,7 +66,7 @@ void DrawMacrosMenu()
 
 		while (result > 0)
 		{
-			MENU_ITEM_J(v1begin, v1len, RunMacro(EncPos - 1))
+			MENU_ITEM_J(v1begin, v1len, RunMacro(gData.RM.EncPos - 1))
 			result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
 		}
 	}
@@ -88,7 +88,7 @@ void DrawPrintMenu()
 	}
   
 	MENU_BEGIN("Print")
-	MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MENU1; gEnc1.write(0))
+	MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MENU1;)
 	
 	if (gData.RM.FileArray)
 	{
@@ -101,7 +101,7 @@ void DrawPrintMenu()
 
 		while (result > 0)
 		{
-			MENU_ITEM_J(v1begin, v1len, Print(EncPos - 1); gCurrentPage = PG_MAIN; gEnc1.write(0))
+			MENU_ITEM_J(v1begin, v1len, Print(gData.RM.EncPos - 1); gCurrentPage = PG_MAIN;)
 			result = json_arr(&astate, NULL, &v1type, &v1begin, &v1len);
 		}
 	}
@@ -112,7 +112,7 @@ void DrawPrintMenu()
 void DrawBabyStepMenu()
 {
   MENU_BEGIN("Babystep")
-  MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MENU1; gEnc1.write(0))
+  MENU_ITEM_P(PSTR("Back"), gCurrentPage = PG_MENU1;)
   MENU_ITEM_P(PSTR("Z +0.02"), MakeRequestP(PSTR("M290 S0.02"), NULL, 0))
   MENU_ITEM_P(PSTR("Z -0.02"), MakeRequestP(PSTR("M290 S-0.02"), NULL, 0))
   MENU_END()

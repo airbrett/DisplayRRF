@@ -63,6 +63,10 @@ union Data
 	struct
 	{
 		char* FileArray;
+		int First;
+		int Last;
+		int EncPos;
+		int Enc;
 	} RM;
 };
 
