@@ -101,10 +101,10 @@ void MainScreen()
   DrawStrP(0, 64, PSTR("X"));
   PrintFloat(gData.MS.Pos.X, 2, true);
 
-  DrawStrP(45, 64, PSTR("Y"));
+  DrawStrP(44, 64, PSTR("Y"));
   PrintFloat(gData.MS.Pos.Y, 2, true);
 
-  DrawStrP(90, 64, PSTR("Z"));
+  DrawStrP(89, 64, PSTR("Z"));
   PrintFloat(gData.MS.Pos.Z, 2, true);
 }
 
