@@ -4,3 +4,19 @@ Software to communicate with ReprapFirmware and drive a RRD LCD. This project wa
 * u8g2
 * Encoder
 * PinChangeInterrupt
+# Pin assignements
+Arduino Mini Pro|EXP1|Signal
+---------|-----|-----|
+RAW|10|+5VDC
+GND|9|GND
+13|5|SCLK
+11|3|MOSI
+10|4|CS
+5|1|BEEP
+8|2|ENC_SW
+		
+Arduino Mini Pro|EXP2|Signal
+---------|-----|-----|
+2|5|ENC_A
+3|3|ENC_B
+A0|8|RESET_EXT
