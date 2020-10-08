@@ -5,6 +5,7 @@ Software to communicate with ReprapFirmware and drive a RRD LCD. This project wa
 * Encoder
 * PinChangeInterrupt
 # Pin assignements
+Can be changed in Pins.h
 Arduino Mini Pro|EXP1|Signal
 ---------|-----|-----|
 RAW|10|+5VDC
