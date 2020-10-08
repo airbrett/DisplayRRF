@@ -21,3 +21,6 @@ Arduino Mini Pro|EXP2|Signal
 2|5|ENC_A
 3|3|ENC_B
 A0|8|RESET_EXT
+#Pictures
+![mainscreen image](extra/mainscreen.jpg)
+![mainmenu image](extra/mainmenu.jpg)
