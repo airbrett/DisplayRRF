@@ -21,6 +21,9 @@ Arduino Mini Pro|EXP2|Signal
 2|5|ENC_A
 3|3|ENC_B
 A0|8|RESET_EXT
+# RRF Config
+Add the following to your config.g file
+M575 P1 S0 B57600
 # Pictures
 ![mainscreen image](extra/mainscreen.jpg)
 ![mainmenu image](extra/mainmenu.jpg)
