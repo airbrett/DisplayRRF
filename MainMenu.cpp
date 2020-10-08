@@ -28,7 +28,6 @@ void DrawMenu()
   else if (gStatusStr == 'P')
   {
     MENU_ITEM_P(PSTR("Pause"), MakeRequestP(PSTR("M25"), NULL, 0); gCurrentPage = PG_MAIN)
-    MENU_ITEM_P(PSTR("Stop"), MakeRequestP(PSTR("M0"), NULL, 0); gCurrentPage = PG_MAIN)
   }
   else if (gStatusStr == 'A')
   {
